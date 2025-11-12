@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import pathlib
 from dataclasses import dataclass
 from typing import Optional
 from urllib import request
@@ -24,6 +25,6 @@ class HttpClient:
 
 
 def load_local(path: str) -> FetchResult:
-    file_path = Path(path)
+    file_path = pathlib.Path(path)
     content = file_path.read_text(encoding="utf-8")
-    return FetchResult(url=file_path.resolve().as_uri(), content=content)
+    return FetchResult(url=file_path.as_uri(), content=content)
