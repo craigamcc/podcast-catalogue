@@ -1,0 +1,299 @@
+[
+  {
+    "id": "stuff-the-british-stole-with-marc-fennell-abc-listen",
+    "title": "Stuff The British Stole with Marc Fennell - ABC listen",
+    "publisher": "ABC (Australian Broadcasting Corporation)",
+    "hostInformation": null,
+    "description": "Throughout its reign, the British Empire stole a lot of stuff. Today the Empire's loot sits in museums, galleries, private collections and burial sites with polite plaques. But its history is often messier than the plaques suggest.",
+    "genre": "History",
+    "language": "English",
+    "narrativeHook": "The British Empire's stolen treasures hide dark histories behind museum plaques.",
+    "keywords": [
+      "cultural heritage",
+      "history",
+      "humorous",
+      "pocahontas",
+      "podcasts"
+    ],
+    "vibe": {
+      "tone": [
+        "Humorous"
+      ],
+      "complexity": 0.7,
+      "pace": "Medium"
+    },
+    "targetAudience": {
+      "interests": [
+        "History",
+        "Cultural Heritage"
+      ],
+      "ageGroups": [
+        "Adults",
+        "Seniors"
+      ],
+      "location": {}
+    },
+    "recommendationScenarios": [
+      "Morning Commute",
+      "Deep Focus"
+    ],
+    "recommendationReasons": [],
+    "links": {
+      "web": "https://www.abc.net.au/listen/programs/stuff-the-british-stole",
+      "youtube": "https://www.youtube.com/abcaustralia"
+    },
+    "rating": null,
+    "ratingCount": null,
+    "frequency": "Fortnightly",
+    "episodeLength": "28 mins",
+    "isPopular": false,
+    "reviews": [],
+    "entityGraph": [
+      "Pocahontas",
+      "Disney movie",
+      "myths"
+    ],
+    "episodes": [
+      {
+        "title": "Presenting Conversations",
+        "description": "Conversations draws you deeper into the life story of someone you may, or may not, have heard about — someone who has seen and done amazing things.",
+        "duration": "0",
+        "url": "https://mediacore-live-production.akamaized.net/audio/02/gk/Z/tr.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/gk/Z/tr.mp3",
+        "publishedAt": null,
+        "narrativeHook": "Dive into the extraordinary life stories of remarkable individuals, whether you've heard of them or not.",
+        "vibe": {
+          "tone": [
+            "Academic"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": [
+          {
+            "title": "Introduction to the Podcast",
+            "summary": "The podcast welcomes listeners to start the new year with curated conversations on various topics.",
+            "startTime": 0.0,
+            "endTime": 6.0
+          },
+          {
+            "title": "Topics Covered",
+            "summary": "The podcast highlights episodes on motivation, health, addiction, relationships, confidence, and mindset.",
+            "startTime": 6.0,
+            "endTime": 14.0
+          },
+          {
+            "title": "Personal Reflection",
+            "summary": "A personal anecdote about facing mortality and the influence of family.",
+            "startTime": 14.0,
+            "endTime": 22.0
+          },
+          {
+            "title": "Podcast Promotion",
+            "summary": "The podcast is promoted on the ABC Listen app with the hosts' names.",
+            "startTime": 22.0,
+            "endTime": 22.5
+          }
+        ]
+      },
+      {
+        "title": "The Girl Called Pocahontas",
+        "description": "How do you uncover the true life of a woman whose existence is wrapped in myth, propaganda and a famous animated children’s movie?",
+        "duration": "2025",
+        "url": "https://mediacore-live-production.akamaized.net/audio/01/kb/Z/d7.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/01/kb/Z/d7.mp3",
+        "publishedAt": null,
+        "narrativeHook": "Uncover the real story behind Pocahontas, beyond the myths and the Disney movie.",
+        "vibe": {
+          "tone": [
+            "Academic"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [
+          "Pocahontas",
+          "Disney movie",
+          "myths"
+        ],
+        "chapters": [
+          {
+            "title": "The Pocahontas Myth",
+            "summary": "The podcast introduces the common perception of Pocahontas as a Disney princess and love story.",
+            "startTime": 0.0,
+            "endTime": 120.5
+          },
+          {
+            "title": "The Real Pocahontas",
+            "summary": "The podcast challenges the myth, revealing the complex political and personal realities of Pocahontas's life.",
+            "startTime": 120.5,
+            "endTime": 240.0
+          },
+          {
+            "title": "Historical Theft and Legacy",
+            "summary": "The podcast discusses the theft of Pocahontas's story and body, linking it to broader historical injustices.",
+            "startTime": 240.0,
+            "endTime": 360.0
+          },
+          {
+            "title": "Personal Connections",
+            "summary": "The hosts share their personal ties to Indigenous history and the impact of residential schools.",
+            "startTime": 360.0,
+            "endTime": 480.0
+          },
+          {
+            "title": "Correcting the Story",
+            "summary": "The podcast concludes with the hosts' mission to correct historical inaccuracies and honor Pocahontas's legacy.",
+            "startTime": 480.0,
+            "endTime": 510.0
+          }
+        ]
+      },
+      {
+        "title": "The Fever Tree Hunt",
+        "description": "Most heists target gold, jewels or cash. This one targeted illegal seeds. As the British established their sprawling empire across the subcontinent and beyond, they encountered a formidable adversary — malaria.",
+        "duration": "1800",
+        "url": "https://mediacore-live-production.akamaized.net/audio/01/kk/Z/o1.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/01/kk/Z/o1.mp3",
+        "publishedAt": null,
+        "narrativeHook": "",
+        "vibe": {
+          "tone": [
+            "General"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": []
+      },
+      {
+        "title": "Zero Marks The Spot",
+        "description": "It’s round. It has a hole in it. It symbolises nothing and yet it is the possibility of something... meet zero.",
+        "duration": "2131",
+        "url": "https://mediacore-live-production.akamaized.net/audio/01/k1/Z/77.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/01/k1/Z/77.mp3",
+        "publishedAt": null,
+        "narrativeHook": "",
+        "vibe": {
+          "tone": [
+            "General"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": []
+      },
+      {
+        "title": "The Unfinished Prince",
+        "description": "There's a body buried in the grounds of Windsor Castle whose real home is thousands of miles away. Since 2007, there have been calls for Prince Alamayu’s remains to be returned to Ethiopia.",
+        "duration": "2685",
+        "url": "https://mediacore-live-production.akamaized.net/audio/01/jv/Z/s1.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/01/jv/Z/s1.mp3",
+        "publishedAt": null,
+        "narrativeHook": "",
+        "vibe": {
+          "tone": [
+            "General"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": []
+      },
+      {
+        "title": "Bottles in the Basement",
+        "description": "Deep in the cellars of one of England’s grandest country homes, covered in dirt and cobwebs, lay dozens of bottles of ancient rum. Their discovery set off a frenzy among collectors vying to own the oldest rum in the world.",
+        "duration": "2190",
+        "url": "https://mediacore-live-production.akamaized.net/audio/01/jp/Z/q9.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/01/jp/Z/q9.mp3",
+        "publishedAt": null,
+        "narrativeHook": "",
+        "vibe": {
+          "tone": [
+            "General"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": []
+      },
+      {
+        "title": "The Head in the Library",
+        "description": "In an old country town high school library there is a glass case that displays something highly unusual and, for some, confronting.",
+        "duration": "2460",
+        "url": "https://mediacore-live-production.akamaized.net/audio/01/jm/Z/t3.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/01/jm/Z/t3.mp3",
+        "publishedAt": null,
+        "narrativeHook": "",
+        "vibe": {
+          "tone": [
+            "General"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": []
+      },
+      {
+        "title": "INTRODUCING — Stuff The British Stole | Series 3",
+        "description": "Throughout its reign, the British Empire stole a lot of stuff. Today the Empire's loot sits in museums, galleries, private collections and burial sites with polite plaques. But its history is often messier than the plaques suggest.",
+        "duration": "120",
+        "url": "https://mediacore-live-production.akamaized.net/audio/01/jf/Z/0c.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/01/jf/Z/0c.mp3",
+        "publishedAt": null,
+        "narrativeHook": "",
+        "vibe": {
+          "tone": [
+            "General"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": []
+      },
+      {
+        "title": "Special Announcement",
+        "description": "We’re working hard on bringing you more podcast episodes but in the meantime, we have a special announcement…",
+        "duration": "120",
+        "url": "https://mediacore-live-production.akamaized.net/audio/01/cj/Z/cv.mp3",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/01/cj/Z/cv.mp3",
+        "publishedAt": null,
+        "narrativeHook": "",
+        "vibe": {
+          "tone": [
+            "General"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": []
+      },
+      {
+        "title": "Strange Fowle",
+        "description": "It’s become a symbol for extinction; the dodo is a semi-mythical creature which most of us know only through Alice in Wonderland. But one particular dodo was the victim of a crime – murder.",
+        "duration": "2094",
+        "url": "https://abcmedia.akamaized.net/radio/podcast/stuff-the-british-stole/sbs-2021-11-17-s2-ep5.mp3",
+        "audioUrl": "https://abcmedia.akamaized.net/radio/podcast/stuff-the-british-stole/sbs-2021-11-17-s2-ep5.mp3",
+        "publishedAt": null,
+        "narrativeHook": "",
+        "vibe": {
+          "tone": [
+            "General"
+          ],
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [],
+        "chapters": []
+      }
+    ]
+  }
+]

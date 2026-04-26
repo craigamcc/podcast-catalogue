@@ -1,0 +1,73 @@
+export const MOCKED_PODCASTS: Podcast[] = [
+  {
+    "title": "Conversations with Richard Fidler and Sarah Kanowski - ABC listen",
+    "hostInformation": "Richard Fidler and Sarah Kanowski",
+    "description": "Conversations draws you deeper into the life story of someone you may, or may not, have heard about \u2014 someone who has seen and done amazing things.",
+    "genre": [],
+    "targetAudience": {
+      "interests": [],
+      "ageGroups": [],
+      "location": {}
+    },
+    "recommendationScenarios": [],
+    "recommendationReasons": [],
+    "abcPodcastPage": "https://www.abc.net.au/listen/programs/conversations",
+    "imageUrl": "https://live-production.wcms.abc-cdn.net.au/9021e26e873c0b58ffad01063cbf4d19?impolicy=wcms_crop_resize&cropH=3000&cropW=3000&xPos=0&yPos=0&width=862&height=862",
+    "youtubePage": "https://www.youtube.com/abcaustralia",
+    "otherReviewLinks": [],
+    "episodes": [
+      {
+        "title": "Radio National: Ron McCallum's story of 'being born blind at the right time'",
+        "description": "Law professor Ron McCallum was a premature baby, and the treatment he received as a newborn in the 1940s left him totally blind. At the time, expectations for his future were low.",
+        "duration": "3180"
+      },
+      {
+        "title": "Holiday Listening: Nerida's nudibranchs, sea dragons and siphonophores",
+        "description": "As a marine molecular biologist, Dr Nerida Wilson spends a lot of her time getting acquainted with the mysterious creatures lurking in the dark depths of the sea.",
+        "duration": "3120"
+      },
+      {
+        "title": "Radio National: How Brolga became a 'Kangaroo Mum'",
+        "description": "Chris \u2018Brolga\u2019 Barns knew early on he wanted to make a living working with animals. When he grew up he became a kangaroo rescue specialist",
+        "duration": "3180"
+      },
+      {
+        "title": "Holiday Listening: Lee Berger, the real-life Indiana Jones, and the Case of the Lost Hominids",
+        "description": "When Lee Berger entered the field of palaeoanthropology there was a one in 10,000,000 chance he would discover anything 'worthwhile' digging around South Africa. But this real-life Indiana Jones kept bucking the odds.",
+        "duration": "3108"
+      },
+      {
+        "title": "Radio National: Stan Grant on his lessons from his father",
+        "description": "Journalist and writer Stan Grant on his remarkable life, and the lessons he learned from his father",
+        "duration": "3180"
+      },
+      {
+        "title": "Holiday Listening: Fishing for feelings -- the many ways fish are smarter than you think",
+        "description": "Dr Culum Brown is a leading researcher in the field of fish cognition, his research has shown that even that smallest fish are capable of learning and can retain memories for months.",
+        "duration": "3017"
+      },
+      {
+        "title": "Radio National: Kirsty De Vallance on surviving and thriving after her father's arrest",
+        "description": "When Kirsty de Vallance was 16 her father, then a senior customs officer, was convicted and imprisoned for heroin trafficking.",
+        "duration": "3180"
+      },
+      {
+        "title": "Holiday Listening: The flying vet from Outback Queensland",
+        "description": "Dr Campbell Costello's work as a vet has taken him out of his family's station in North Queensland to places as far flung as Kazakhstan, Mongolia and Patagonia.",
+        "duration": "3060"
+      },
+      {
+        "title": "Radio National: Christian the male midwife working in Arnhem Land",
+        "description": "Growing up south of Sydney as one of six boys, midwifery wasn't the occupation Christian Wright expected for himself. At the age of nine, he experienced a vision that gave him a sense of his future in a life of service.",
+        "duration": "3180"
+      },
+      {
+        "title": "Holiday Listening: Slime moulds\u2014the brainless blobs that can move and solve mazes",
+        "description": "Dr Tanya Latty is an insect scientist with a quirky taste in pets, and a keen eye for detail, but it's the lessons from her brainless pet slime mould that she's most fascinated about.",
+        "duration": "2880"
+      }
+    ],
+    "isPopular": false,
+    "isAwardWinning": false
+  }
+];

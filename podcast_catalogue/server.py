@@ -170,14 +170,44 @@ def wrap_with_ui(results: Any) -> Any:
     }
 
 async def async_resolve_audio(ep: Dict[str, Any]):
-    """Live-resolves audio URL for an episode if missing."""
+    """Live-resolves audio URL for an episode if missing. Prioritizes RSS if available."""
     audio_url = ep.get("audio_url") or ep.get("audioUrl")
-    if not audio_url and ep.get("url"):
+    if audio_url: return
+    
+    podcast_title = ep.get("podcast_title", "").lower()
+    podcast_data = store.podcasts.get(podcast_title, {})
+    rss_url = podcast_data.get("rss_url") or podcast_data.get("feed_url")
+    
+    import aiohttp
+    
+    # 1. RSS SPEED-PATH: If we have an RSS URL, try it first (very fast)
+    if rss_url:
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(rss_url, timeout=3) as resp:
+                    if resp.status == 200:
+                        from xml.etree import ElementTree
+                        xml_text = await resp.text()
+                        root = ElementTree.fromstring(xml_text)
+                        # Find the episode in the RSS
+                        target_title = ep.get("title", "").lower()
+                        for item in root.findall(".//item"):
+                            rss_title = (item.find("title").text or "").lower()
+                            if target_title in rss_title or rss_title in target_title:
+                                enclosure = item.find("enclosure")
+                                if enclosure is not None and enclosure.get("url"):
+                                    new_url = enclosure.get("url")
+                                    ep["audio_url"] = new_url
+                                    return
+        except:
+            pass
+
+    # 2. WEB FALLBACK: Try scraping the episode page
+    if ep.get("url"):
         try:
             from .parser import parse_episode_page
-            import aiohttp
             async with aiohttp.ClientSession() as session:
-                async with session.get(ep["url"], timeout=2) as resp:
+                async with session.get(ep["url"], timeout=3) as resp:
                     if resp.status == 200:
                         html = await resp.text()
                         ep_data = parse_episode_page(html)

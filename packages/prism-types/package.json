@@ -1,0 +1,9 @@
+{
+  "name": "@prism/types",
+  "version": "1.0.0",
+  "description": "Shared Type Contract for the Prism Intelligence Ecosystem",
+  "main": "index.ts",
+  "types": "index.ts",
+  "author": "Antigravity",
+  "license": "ISC"
+}

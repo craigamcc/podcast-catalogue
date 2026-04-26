@@ -1,0 +1,1802 @@
+export const MOCKED_PODCASTS: Podcast[] = [
+  {
+    "title": "Conversations with Richard Fidler and Sarah Kanowski - ABC listen",
+    "hostInformation": "Richard Fidler and Sarah Kanowski",
+    "description": "Conversations draws you deeper into the life story of someone you may, or may not, have heard about \u2014 someone who has seen and done amazing things.",
+    "targetAudience": {
+      "interests": [
+        "Storytelling",
+        "Biographies",
+        "True Crime",
+        "Personal Development"
+      ],
+      "ageGroups": [
+        "Adults",
+        "Seniors"
+      ],
+      "location": {}
+    },
+    "recommendationScenarios": [
+      "Morning Commute",
+      "Deep Focus"
+    ],
+    "recommendationReasons": [
+      "Featured in ABC Most Listened"
+    ],
+    "abcPodcastPage": "https://www.abc.net.au/listen/programs/conversations",
+    "imageUrl": "https://live-production.wcms.abc-cdn.net.au/9021e26e873c0b58ffad01063cbf4d19?impolicy=wcms_crop_resize&cropH=3000&cropW=3000&xPos=0&yPos=0&width=862&height=862",
+    "youtubePage": "https://www.youtube.com/abcaustralia",
+    "otherReviewLinks": [],
+    "episodes": [
+      {
+        "title": "From child preacher to wicked defector \u2014 leaving the Jehovah\u2019s Witnesses",
+        "description": "Naomi Mourra grew up as a door-knocking Jehovah's Witness but at 21, she realised Doomsday was not upon her, and left the religion for good. As a child, Naomi thought she was going to live forever.",
+        "duration": "3060",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/i0/Z/3o.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/naomi-mourra-leaving-jehovahs-witness-faith-sexuality-culture/106361218",
+        "transcript": " ABC Listen, podcasts, radio, news, music, and more. Naomi Mora is a stand-up comedian. Naomi's family are from Lebanon, originally, which has people from a whole lot of different religious traditions. But instead of being brought up as a sunny or sheer or as an Orthodox Christian or a Maranite Christian or as a Jewish person, Naomi's family, which hovers witnesses. And she hovers witnesses a pretty distinct from mainstream Christian denominations. They believe the destruction of the current world system at Armageddon is really close at hand and that the establishment of God's Kingdom on Earth, as they see it, is the only solution for humanity. And this meant that Naomi grew up at a distance from people outside the faith. And like her parents, she expected the world to end at any given moment, and that it wasn't going to be pretty. And then Naomi says she woke up and she left the Jehovah's Witnesses. But she lost quite a lot in the process and she was shunned from the only community she'd ever known. And for a long while she became something of a stranger to her father. But it turns out that when you no longer think the end of the world is nigh, well then you can start thinking about the future again. And you have to figure out who you really are. Hello, Naomi, welcome. Hi, Ritten, thank you. Naomi, when I was a kid I thought we were all going to die in a nuclear holocaust. When you were a kid, you saw picks of the end of the world. What do those pictures look like? Well, I guess they were a bit less nuclear and more kind of fire raining down from heaven. So there was always pictures in materials when they were wanting you to kind of picture what Armageddon looked like. There was fire coming down from heaven, buildings collapsing and almost always a group of people who looked modern. I don't know. They looked, you know, they were wearing tight clothes. It was very...",
+        "segments": [
+          {
+            "text": "ABC Listen, podcasts, radio, news, music, and more.",
+            "start": 0.0,
+            "end": 5.36
+          },
+          {
+            "text": "Naomi Mora is a stand-up comedian.",
+            "start": 7.44,
+            "end": 9.84
+          },
+          {
+            "text": "Naomi's family are from Lebanon, originally,",
+            "start": 9.84,
+            "end": 12.16
+          },
+          {
+            "text": "which has people from a whole lot of different religious traditions.",
+            "start": 12.16,
+            "end": 15.52
+          },
+          {
+            "text": "But instead of being brought up as a sunny or sheer",
+            "start": 16.56,
+            "end": 19.44
+          },
+          {
+            "text": "or as an Orthodox Christian or a Maranite Christian or as a Jewish person,",
+            "start": 19.44,
+            "end": 23.2
+          },
+          {
+            "text": "Naomi's family, which hovers witnesses.",
+            "start": 24.16,
+            "end": 26.4
+          },
+          {
+            "text": "And she hovers witnesses a pretty distinct from mainstream Christian denominations.",
+            "start": 27.36,
+            "end": 32.16
+          },
+          {
+            "text": "They believe the destruction of the current world system at Armageddon",
+            "start": 32.88,
+            "end": 36.64
+          },
+          {
+            "text": "is really close at hand and that the establishment of God's Kingdom on Earth,",
+            "start": 37.2,
+            "end": 42.24
+          },
+          {
+            "text": "as they see it, is the only solution for humanity.",
+            "start": 42.24,
+            "end": 44.64
+          },
+          {
+            "text": "And this meant that Naomi grew up at a distance from people outside the faith.",
+            "start": 45.92,
+            "end": 50.4
+          },
+          {
+            "text": "And like her parents, she expected the world to end at any given moment,",
+            "start": 51.2,
+            "end": 54.96
+          },
+          {
+            "text": "and that it wasn't going to be pretty.",
+            "start": 55.84,
+            "end": 57.04
+          },
+          {
+            "text": "And then Naomi says she woke up and she left the Jehovah's Witnesses.",
+            "start": 58.16,
+            "end": 63.52
+          },
+          {
+            "text": "But she lost quite a lot in the process and she was shunned from the only community she'd",
+            "start": 64.32,
+            "end": 68.56
+          },
+          {
+            "text": "ever known. And for a long while she became something of a stranger to her father.",
+            "start": 68.56,
+            "end": 72.96
+          },
+          {
+            "text": "But it turns out that when you no longer think the end of the world is nigh,",
+            "start": 73.68,
+            "end": 76.64
+          },
+          {
+            "text": "well then you can start thinking about the future again.",
+            "start": 77.36,
+            "end": 79.6
+          },
+          {
+            "text": "And you have to figure out who you really are. Hello, Naomi, welcome.",
+            "start": 80.64,
+            "end": 84.32
+          },
+          {
+            "text": "Hi, Ritten, thank you. Naomi, when I was a kid I thought we were all going to die in a nuclear",
+            "start": 84.4,
+            "end": 88.4
+          },
+          {
+            "text": "holocaust. When you were a kid, you saw picks of the end of the world. What do those pictures look like?",
+            "start": 88.4,
+            "end": 93.76
+          },
+          {
+            "text": "Well, I guess they were a bit less nuclear and more kind of fire raining down from heaven.",
+            "start": 93.76,
+            "end": 101.6
+          },
+          {
+            "text": "So there was always pictures in materials when they were wanting you to kind of picture what Armageddon",
+            "start": 102.32,
+            "end": 107.52
+          },
+          {
+            "text": "looked like. There was fire coming down from heaven, buildings collapsing and almost always a group",
+            "start": 107.52,
+            "end": 113.12
+          },
+          {
+            "text": "of people who looked modern. I don't know. They looked, you know, they were wearing tight clothes.",
+            "start": 113.12,
+            "end": 119.36
+          },
+          {
+            "text": "It was very...",
+            "start": 119.36,
+            "end": 120.88
+          }
+        ],
+        "chapters": [
+          {
+            "title": "Naomi's Religious Upbringing",
+            "summary": "Naomi introduces her family's Jehovah's Witness background and beliefs.",
+            "startTime": 0.0,
+            "endTime": 74.0
+          },
+          {
+            "title": "Leaving the Faith",
+            "summary": "Naomi describes her decision to leave Jehovah's Witnesses and its personal consequences.",
+            "startTime": 74.0,
+            "endTime": 81.0
+          },
+          {
+            "title": "Armageddon Imagery",
+            "summary": "Naomi reflects on childhood depictions of Armageddon from Jehovah's Witness materials.",
+            "startTime": 81.0,
+            "endTime": 119.0
+          }
+        ],
+        "contentHash": "20430facb2a98fc8",
+        "narrativeHook": "A former Jehovah's Witness recounts her journey from child preacher to defector after realizing Doomsday wasn't coming.",
+        "vibe": {
+          "tone": "Tense",
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [
+          "Naomi Mourra",
+          "Jehovah\u2019s Witnesses",
+          "Doomsday"
+        ]
+      },
+      {
+        "title": "A boy called Little Chilli \u2014 how flavour and migration led to unexpected love",
+        "description": "Tony Tan\u2019s parents pinned their hopes on him when they sent him from home in Malaysia to Melbourne to become a white collar professional in the 1970s.",
+        "duration": "2791",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hv/Z/01.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/tony-tan-chef-malaysia-food-tours-cookbook/106353478",
+        "transcript": " Killed with a drug overdose, then cut up and put in a wheelie bin. That is what prosecutors alleged Sheree Glassdenbreet did to our partner, 55-year-old Jeffrey McLean. On the case of the wheelie bin murder, we'll follow the murder trial of Sheree Glassdenbreet and three co-accused as they defend charges relating to Jeffrey's death. Search for the K-Soft podcast on ABC Listen or wherever you get your podcasts to make sure you don't miss an episode. ABC Listen, podcasts, radio, news, music, and more. Tony Tan grew up by his mother's side, where, like a little sponge, he absorbed all the flavors, tips, and wisdom she'd picked up as a cook in the colonial kitchens of pre-independence Malaysia. His parents had high hopes for him when they sent him to Australia to study, to ascend to the professional class, an immigrant tale as old as time. But when he arrived, he found a world he had no idea about. And from a childhood steeped in Chinese, Indian, Malaysian, and British flavors, he's built a life in Australia as a chef, teacher, and mentor. Hi, Tony. Hello, how are you? I'm really, really well. I'm glad to be here with you. Tony, let's start with where your love of food comes from. It's very easy. It's a lot to do with family. It's a lot to do with tasting things all the time. It's a lot of curiosity because family, especially Chinese families, we are forever talking about food, even before the food is finished. So many people say that when you're having breakfast, you already talk about lunch, and when you're having lunch, you already talk about dinner. And it's just, it's almost like a, as if it's an obsession. It's just snacking in between. And snacking in between. And so...",
+        "segments": [
+          {
+            "text": "Killed with a drug overdose, then cut up and put in a wheelie bin.",
+            "start": 0.0,
+            "end": 6.52
+          },
+          {
+            "text": "That is what prosecutors alleged Sheree Glassdenbreet did to our partner, 55-year-old Jeffrey",
+            "start": 6.52,
+            "end": 10.88
+          },
+          {
+            "text": "McLean.",
+            "start": 10.88,
+            "end": 12.08
+          },
+          {
+            "text": "On the case of the wheelie bin murder, we'll follow the murder trial of Sheree Glassdenbreet",
+            "start": 12.08,
+            "end": 15.72
+          },
+          {
+            "text": "and three co-accused as they defend charges relating to Jeffrey's death.",
+            "start": 15.72,
+            "end": 20.32
+          },
+          {
+            "text": "Search for the K-Soft podcast on ABC Listen or wherever you get your podcasts to make",
+            "start": 20.32,
+            "end": 24.36
+          },
+          {
+            "text": "sure you don't miss an episode.",
+            "start": 24.36,
+            "end": 26.32
+          },
+          {
+            "text": "ABC Listen, podcasts, radio, news, music, and more.",
+            "start": 30.0,
+            "end": 37.24
+          },
+          {
+            "text": "Tony Tan grew up by his mother's side, where, like a little sponge, he absorbed all the",
+            "start": 37.24,
+            "end": 42.2
+          },
+          {
+            "text": "flavors, tips, and wisdom she'd picked up as a cook in the colonial kitchens of pre-independence",
+            "start": 42.2,
+            "end": 48.12
+          },
+          {
+            "text": "Malaysia.",
+            "start": 48.12,
+            "end": 49.76
+          },
+          {
+            "text": "His parents had high hopes for him when they sent him to Australia to study, to ascend",
+            "start": 49.76,
+            "end": 53.92
+          },
+          {
+            "text": "to the professional class, an immigrant tale as old as time.",
+            "start": 53.92,
+            "end": 58.76
+          },
+          {
+            "text": "But when he arrived, he found a world he had no idea about.",
+            "start": 58.76,
+            "end": 64.96
+          },
+          {
+            "text": "And from a childhood steeped in Chinese, Indian, Malaysian, and British flavors, he's",
+            "start": 64.96,
+            "end": 69.28
+          },
+          {
+            "text": "built a life in Australia as a chef, teacher, and mentor.",
+            "start": 69.28,
+            "end": 73.8
+          },
+          {
+            "text": "Hi, Tony.",
+            "start": 73.8,
+            "end": 74.8
+          },
+          {
+            "text": "Hello, how are you?",
+            "start": 74.8,
+            "end": 76.72
+          },
+          {
+            "text": "I'm really, really well.",
+            "start": 76.72,
+            "end": 77.72
+          },
+          {
+            "text": "I'm glad to be here with you.",
+            "start": 77.72,
+            "end": 79.52
+          },
+          {
+            "text": "Tony, let's start with where your love of food comes from.",
+            "start": 79.52,
+            "end": 85.6
+          },
+          {
+            "text": "It's very easy.",
+            "start": 85.6,
+            "end": 86.96
+          },
+          {
+            "text": "It's a lot to do with family.",
+            "start": 86.96,
+            "end": 89.68
+          },
+          {
+            "text": "It's a lot to do with tasting things all the time.",
+            "start": 89.68,
+            "end": 93.24
+          },
+          {
+            "text": "It's a lot of curiosity because family, especially Chinese families, we are forever talking about",
+            "start": 93.24,
+            "end": 99.52
+          },
+          {
+            "text": "food, even before the food is finished.",
+            "start": 99.52,
+            "end": 102.76
+          },
+          {
+            "text": "So many people say that when you're having breakfast, you already talk about lunch, and",
+            "start": 102.76,
+            "end": 107.84
+          },
+          {
+            "text": "when you're having lunch, you already talk about dinner.",
+            "start": 107.84,
+            "end": 110.44
+          },
+          {
+            "text": "And it's just, it's almost like a, as if it's an obsession.",
+            "start": 110.44,
+            "end": 115.36
+          },
+          {
+            "text": "It's just snacking in between.",
+            "start": 115.36,
+            "end": 116.88
+          },
+          {
+            "text": "And snacking in between.",
+            "start": 116.88,
+            "end": 118.92
+          },
+          {
+            "text": "And so...",
+            "start": 118.92,
+            "end": 119.68
+          }
+        ],
+        "chapters": [
+          {
+            "title": "The Wheelie Bin Murder Trial",
+            "summary": "The podcast introduces the murder trial of Sheree Glassdenbreet and her co-accused.",
+            "startTime": 0.0,
+            "endTime": 30.5
+          },
+          {
+            "title": "Tony Tan's Culinary Roots",
+            "summary": "Tony Tan reflects on his multicultural upbringing and family's influence on his passion for food.",
+            "startTime": 30.5,
+            "endTime": 120.5
+          }
+        ],
+        "contentHash": "25595e963051d1ef",
+        "narrativeHook": "A Malaysian boy's journey to Australia intertwines food, migration, and unexpected love.",
+        "vibe": {
+          "tone": "Academic",
+          "complexity": 0.5,
+          "pace": "Medium"
+        },
+        "entities": [
+          "Tony Tan",
+          "Malaysia",
+          "Melbourne",
+          "migration",
+          "unexpected love"
+        ]
+      },
+      {
+        "title": "A short history of the innovations that have shaped human progress",
+        "description": "We rarely stop to wonder who invented the wheel, the alphabet or the printing press but so much of what feels fundamental to daily life was once a bold, untested idea, and someone had to think it up first.",
+        "duration": "3120",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hr/Z/5q.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/andrew-leigh-on-his-book-the-shortest-history-of-innovation/106345742",
+        "transcript": " ABC Listen, podcasts, radio, news, music and more. I've always loved medieval history and one of the things I love the most about it is that the middle of that blood and horror and pestilence you sometimes run into a lovely story that illustrates a pivotal moment. And I read the story that in the year 972 AD, a marriage was arranged between a prince of the Holy Roman Empire and a Byzantine princess from Constantinople named Theophane. The two of them were married in St. Peter's in Rome and afterwards they sat down to a raucous wedding feast. Theophane was served a plate of food and then she did something that astonished the revelers. She produced from her gown a dainty little double pronged golden fork and lifted the food from the plate to her mouth. Now in Western Europe, even at a royal table, food was consumed noisily and with the hands. Some of the wedding guests saw at once that the use of such an implement would avoid unnecessary mess on the table and on the clothes, but others saw the fork as a symbol of a feet eastern decadence and would later denounce the fork as an ungodly implement. The banquet probably became much less fun after the fork, but I don't think too many people would want to live in a world without an innovation like cutlery or other inventions that have changed the world like the polio vaccine or chocolate donuts. But on the other hand, many of the men who invented the atom bomb eventually came to wish they'd never brought such a thing into the world. And many of the researchers working on artificial intelligence are troubled by their work right now. Andrew Lee is back on conversations today. Andrew is a member of Parliament's federal government minister and a former professor of economics and he's been diving deeply into the whole great big",
+        "segments": [
+          {
+            "text": "ABC Listen, podcasts, radio, news, music and more.",
+            "start": 0.0,
+            "end": 5.44
+          },
+          {
+            "text": "I've always loved medieval history and one of the things I love the most about it is that",
+            "start": 7.6,
+            "end": 11.28
+          },
+          {
+            "text": "the middle of that blood and horror and pestilence",
+            "start": 12.16,
+            "end": 14.64
+          },
+          {
+            "text": "you sometimes run into a lovely story that illustrates a pivotal moment.",
+            "start": 14.64,
+            "end": 19.12
+          },
+          {
+            "text": "And I read the story that in the year 972 AD,",
+            "start": 19.92,
+            "end": 23.12
+          },
+          {
+            "text": "a marriage was arranged between a prince of the Holy Roman Empire",
+            "start": 23.84,
+            "end": 27.52
+          },
+          {
+            "text": "and a Byzantine princess from Constantinople named Theophane.",
+            "start": 28.16,
+            "end": 31.84
+          },
+          {
+            "text": "The two of them were married in St. Peter's in Rome and afterwards they sat down to a raucous wedding",
+            "start": 32.88,
+            "end": 37.92
+          },
+          {
+            "text": "feast. Theophane was served a plate of food and then she did something that astonished the",
+            "start": 37.92,
+            "end": 43.92
+          },
+          {
+            "text": "revelers. She produced from her gown a dainty little double pronged golden fork and lifted the",
+            "start": 43.92,
+            "end": 52.48
+          },
+          {
+            "text": "food from the plate to her mouth. Now in Western Europe, even at a royal table, food was consumed",
+            "start": 52.48,
+            "end": 59.68
+          },
+          {
+            "text": "noisily and with the hands. Some of the wedding guests saw at once that the use of such an",
+            "start": 59.68,
+            "end": 66.4
+          },
+          {
+            "text": "implement would avoid unnecessary mess on the table and on the clothes, but others saw the fork",
+            "start": 66.4,
+            "end": 71.28
+          },
+          {
+            "text": "as a symbol of a feet eastern decadence and would later denounce the fork as an ungodly implement.",
+            "start": 71.28,
+            "end": 79.04
+          },
+          {
+            "text": "The banquet probably became much less fun after the fork, but I don't think too many people",
+            "start": 79.44,
+            "end": 85.12
+          },
+          {
+            "text": "would want to live in a world without an innovation like cutlery or other inventions that have changed",
+            "start": 85.12,
+            "end": 90.88
+          },
+          {
+            "text": "the world like the polio vaccine or chocolate donuts. But on the other hand, many of the men who",
+            "start": 90.88,
+            "end": 98.48
+          },
+          {
+            "text": "invented the atom bomb eventually came to wish they'd never brought such a thing into the world.",
+            "start": 98.48,
+            "end": 103.76
+          },
+          {
+            "text": "And many of the researchers working on artificial intelligence are troubled by their work right now.",
+            "start": 104.56,
+            "end": 109.2
+          },
+          {
+            "text": "Andrew Lee is back on conversations today. Andrew is a member of Parliament's",
+            "start": 110.64,
+            "end": 114.0
+          },
+          {
+            "text": "federal government minister and a former professor of economics and he's been diving deeply into",
+            "start": 114.0,
+            "end": 118.56
+          },
+          {
+            "text": "the whole great big",
+            "start": 118.56,
+            "end": 119.92
+          }
+        ],
+        "chapters": [
+          {
+            "title": "The Fork in Medieval History",
+            "summary": "A story about the introduction of the fork during a 10th-century royal wedding in Rome.",
+            "startTime": 0.0,
+            "endTime": 105.0
+          },
+          {
+            "title": "Innovation's Double-Edged Impact",
+            "summary": "Discussion of how innovations like the polio vaccine and atom bomb have both positive and negative consequences.",
+            "startTime": 105.0,
+            "endTime": 111.0
+          },
+          {
+            "title": "AI and Modern Challenges",
+            "summary": "Introduction of Andrew Lee's work on artificial intelligence and its current ethical dilemmas.",
+            "startTime": 111.0,
+            "endTime": 119.0
+          }
+        ],
+        "entities": []
+      },
+      {
+        "title": "Encore: the Nyamal woman from the Pilbara transforming how we think about trauma",
+        "description": "Psychologist Dr Tracey Westerman on her groundbreaking work transforming mental health outcomes for Aboriginal communities (R)",
+        "duration": "3120",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hp/Z/tj.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/tracey-westerman-psychologist-jilya-pilbara-mental-health-rpt/106342624",
+        "transcript": " This is an ABC podcast. Dr Tracy Westerman is a proud NIMAL woman from the Pilbara region of Western Australia. She spent her early years at a place with the amazing name of useless loop, then moved to the mining town of Tom Price. Tracy became the first person educated in Tom Price to go on to university. And when she arrived in Perth, Tracy had never caught a bus or ridden an escalator. But she was fired with a passion to study psychology so that she could help her mob. She wanted to deliver mental health care that was useful and practical to Aboriginal people. Care that took account of the psychological effects of dispossession and trauma. And most importantly, mental health that would help stem the terrible tide of suicide in Aboriginal communities. Tracy became the first Aboriginal person to complete a combined masters and PhD in clinical psychology. She set up her own business at 26 and later founded the Western and Diliya Institute for Indigenous Mental Health. Tracy's awards include an Order of Australia, Telstra Women's Business Award and a WA Australian of the Year. And now that she's achieved all that, Tracy's vision is to build an army of Indigenous psychologists, an army of people like her. Her new memoir is called Jillia. Hi Tracy. Hi Sarah, you've made me a bit emotional, but I'm hearing all that backstory. It's quite a lot and you're meant to put in an introduction. Is there truly a place called useless? Tracy, did you truly live there? Well, because it's a memoir they had to fact check it. Right, that's what I was saying. Yeah, they're actually years and it's just you couldn't make it up if you tried. It's just such an incredible thing to say, particularly an international keynote presentations against lots of laughs. But useless loopies years in the...",
+        "segments": [
+          {
+            "text": "This is an ABC podcast.",
+            "start": 0.0,
+            "end": 5.0
+          },
+          {
+            "text": "Dr Tracy Westerman is a proud NIMAL woman from the Pilbara region of Western Australia.",
+            "start": 5.0,
+            "end": 12.0
+          },
+          {
+            "text": "She spent her early years at a place with the amazing name of useless loop,",
+            "start": 12.0,
+            "end": 17.0
+          },
+          {
+            "text": "then moved to the mining town of Tom Price.",
+            "start": 17.0,
+            "end": 20.0
+          },
+          {
+            "text": "Tracy became the first person educated in Tom Price to go on to university.",
+            "start": 20.0,
+            "end": 26.0
+          },
+          {
+            "text": "And when she arrived in Perth, Tracy had never caught a bus or ridden an escalator.",
+            "start": 26.0,
+            "end": 32.0
+          },
+          {
+            "text": "But she was fired with a passion to study psychology so that she could help her mob.",
+            "start": 32.0,
+            "end": 37.0
+          },
+          {
+            "text": "She wanted to deliver mental health care that was useful and practical to Aboriginal people.",
+            "start": 37.0,
+            "end": 43.0
+          },
+          {
+            "text": "Care that took account of the psychological effects of dispossession and trauma.",
+            "start": 43.0,
+            "end": 48.0
+          },
+          {
+            "text": "And most importantly, mental health that would help stem the terrible tide of suicide in Aboriginal communities.",
+            "start": 48.0,
+            "end": 56.0
+          },
+          {
+            "text": "Tracy became the first Aboriginal person to complete a combined masters and PhD in clinical psychology.",
+            "start": 56.0,
+            "end": 64.0
+          },
+          {
+            "text": "She set up her own business at 26 and later founded the Western and Diliya Institute for Indigenous Mental Health.",
+            "start": 64.0,
+            "end": 73.0
+          },
+          {
+            "text": "Tracy's awards include an Order of Australia, Telstra Women's Business Award and a WA Australian of the Year.",
+            "start": 73.0,
+            "end": 81.0
+          },
+          {
+            "text": "And now that she's achieved all that, Tracy's vision is to build an army of Indigenous psychologists,",
+            "start": 81.0,
+            "end": 87.0
+          },
+          {
+            "text": "an army of people like her. Her new memoir is called Jillia.",
+            "start": 87.0,
+            "end": 92.0
+          },
+          {
+            "text": "Hi Tracy.",
+            "start": 92.0,
+            "end": 93.0
+          },
+          {
+            "text": "Hi Sarah, you've made me a bit emotional, but I'm hearing all that backstory.",
+            "start": 93.0,
+            "end": 97.0
+          },
+          {
+            "text": "It's quite a lot and you're meant to put in an introduction.",
+            "start": 97.0,
+            "end": 100.0
+          },
+          {
+            "text": "Is there truly a place called useless?",
+            "start": 100.0,
+            "end": 102.0
+          },
+          {
+            "text": "Tracy, did you truly live there?",
+            "start": 102.0,
+            "end": 104.0
+          },
+          {
+            "text": "Well, because it's a memoir they had to fact check it.",
+            "start": 104.0,
+            "end": 106.0
+          },
+          {
+            "text": "Right, that's what I was saying.",
+            "start": 106.0,
+            "end": 108.0
+          },
+          {
+            "text": "Yeah, they're actually years and it's just you couldn't make it up if you tried.",
+            "start": 108.0,
+            "end": 111.0
+          },
+          {
+            "text": "It's just such an incredible thing to say, particularly an international keynote presentations against lots of laughs.",
+            "start": 111.0,
+            "end": 117.0
+          },
+          {
+            "text": "But useless loopies years in the...",
+            "start": 117.0,
+            "end": 119.0
+          }
+        ],
+        "chapters": [
+          {
+            "title": "Early Life and Background",
+            "summary": "Dr. Tracy Westerman's origins in the Pilbara and early experiences in Useless Loop and Tom Price.",
+            "startTime": 0.0,
+            "endTime": 56.0
+          },
+          {
+            "title": "Education and Achievements",
+            "summary": "Tracy's academic journey, firsts in clinical psychology, and founding the Western and Diliya Institute.",
+            "startTime": 56.0,
+            "endTime": 81.0
+          },
+          {
+            "title": "Vision and Memoir",
+            "summary": "Tracy's current mission to train Indigenous psychologists and her memoir 'Jillia'.",
+            "startTime": 81.0,
+            "endTime": 117.0
+          }
+        ],
+        "entities": []
+      },
+      {
+        "title": "Gillian Welch, David Rawlings, an indestructible Nashville studio and the DNA of folk music",
+        "description": "The iconic folk duo met at an audition for the only country music band at a prestigious jazz school in Boston. They immediately clicked, and joined the rich lineage of Americana artists that stretches back centuries.",
+        "duration": "3228",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hn/Z/bs.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/gillian-welch-david-rawlings-folk-music-nashville/106336432",
+        "transcript": " Killed with a drug overdose, then cut up and put in a wheelie bin. That is what prosecutors alleged Sheree Glastonbreet did to our partner, 55-year-old Jeffrey McLean. On the case of the wheelie bin murder, we'll follow the murder trial of Sheree Glastonbreet and three co-accused as they defend charges relating to Jeffrey's death. Search for the case of podcasts on ABC Listen or wherever you get your podcasts to make sure you don't miss an episode. ABC Listen, podcasts, radio, news, music and more. Gillian Welch and Dave Rawlings have been making music together ever since they met at the Berkeley College of Music in Boston, where they were both auditioning for the school's only country band. In the more than two decades since, they've made a handful of beautiful albums, drawing on the bluegrass, country and folk traditions they love and making them their own. Gillian and Dave live in Nashville, Tennessee, where they are the proud custodians of Woodland, a historic recording studio which has withstood not one, not two, but three tornadoes. Gillian and Dave are on tour in Australia and they're both here in the conversation studio. Hello! Hi. Take me first off to your studio in Nashville. What's the history of Woodland Studio? It was built as a movie theater, the Woodland Theater on Woodland Street in East Nashville. If I have my numbers right, it was built in 1924 and opened in either late 24 early 1925. It was a silent movie house right at the beginning and then got in talkies and it's still, you can still feel the old movie theater in our recording studio. You know, they're still a balcony, they're still a projection booth with the blackout door. You know.",
+        "segments": [
+          {
+            "text": "Killed with a drug overdose, then cut up and put in a wheelie bin.",
+            "start": 0.0,
+            "end": 6.52
+          },
+          {
+            "text": "That is what prosecutors alleged Sheree Glastonbreet did to our partner, 55-year-old Jeffrey McLean.",
+            "start": 6.52,
+            "end": 12.08
+          },
+          {
+            "text": "On the case of the wheelie bin murder, we'll follow the murder trial of Sheree Glastonbreet",
+            "start": 12.08,
+            "end": 15.72
+          },
+          {
+            "text": "and three co-accused as they defend charges relating to Jeffrey's death.",
+            "start": 15.72,
+            "end": 20.32
+          },
+          {
+            "text": "Search for the case of podcasts on ABC Listen or wherever you get your podcasts to make",
+            "start": 20.32,
+            "end": 24.36
+          },
+          {
+            "text": "sure you don't miss an episode.",
+            "start": 24.36,
+            "end": 26.6
+          },
+          {
+            "text": "ABC Listen, podcasts, radio, news, music and more.",
+            "start": 26.6,
+            "end": 31.72
+          },
+          {
+            "text": "Gillian Welch and Dave Rawlings have been making music together ever since they met",
+            "start": 33.72,
+            "end": 38.68
+          },
+          {
+            "text": "at the Berkeley College of Music in Boston, where they were both auditioning for the school's",
+            "start": 38.68,
+            "end": 43.72
+          },
+          {
+            "text": "only country band.",
+            "start": 43.72,
+            "end": 46.0
+          },
+          {
+            "text": "In the more than two decades since, they've made a handful of beautiful albums,",
+            "start": 46.0,
+            "end": 50.8
+          },
+          {
+            "text": "drawing on the bluegrass, country and folk traditions they love and making them their own.",
+            "start": 50.8,
+            "end": 56.56
+          },
+          {
+            "text": "Gillian and Dave live in Nashville, Tennessee, where they are the proud custodians of Woodland,",
+            "start": 57.32,
+            "end": 63.44
+          },
+          {
+            "text": "a historic recording studio which has withstood not one, not two, but three tornadoes.",
+            "start": 63.44,
+            "end": 70.68
+          },
+          {
+            "text": "Gillian and Dave are on tour in Australia and they're both here in the conversation studio.",
+            "start": 70.68,
+            "end": 76.28
+          },
+          {
+            "text": "Hello!",
+            "start": 76.28,
+            "end": 77.08
+          },
+          {
+            "text": "Hi.",
+            "start": 77.08,
+            "end": 78.36
+          },
+          {
+            "text": "Take me first off to your studio in Nashville.",
+            "start": 78.36,
+            "end": 81.48
+          },
+          {
+            "text": "What's the history of Woodland Studio?",
+            "start": 81.48,
+            "end": 84.6
+          },
+          {
+            "text": "It was built as a movie theater, the Woodland Theater on Woodland Street in East Nashville.",
+            "start": 84.64,
+            "end": 92.24
+          },
+          {
+            "text": "If I have my numbers right, it was built in 1924 and opened in either late 24 early 1925.",
+            "start": 92.24,
+            "end": 101.96
+          },
+          {
+            "text": "It was a silent movie house right at the beginning and then got in talkies and it's still,",
+            "start": 101.96,
+            "end": 108.08
+          },
+          {
+            "text": "you can still feel the old movie theater in our recording studio.",
+            "start": 108.08,
+            "end": 114.08
+          },
+          {
+            "text": "You know, they're still a balcony, they're still a projection booth with the blackout door.",
+            "start": 114.08,
+            "end": 119.2
+          },
+          {
+            "text": "You know.",
+            "start": 119.2,
+            "end": 120.04
+          }
+        ],
+        "chapters": [
+          {
+            "title": "Wheelie Bin Murder Case",
+            "summary": "A murder trial involving Sheree Glastonbreet and Jeffrey McLean's alleged drug overdose death.",
+            "startTime": 0.0,
+            "endTime": 34.0
+          },
+          {
+            "title": "Gillian Welch and Dave Rawlings' Music Career",
+            "summary": "The duo's musical journey from Berkeley College of Music to creating folk-inspired albums.",
+            "startTime": 34.0,
+            "endTime": 71.0
+          },
+          {
+            "title": "Woodland Studio's History",
+            "summary": "The origins and resilience of Nashville's Woodland Studio, built as a 1920s movie theater.",
+            "startTime": 71.0,
+            "endTime": 119.0
+          }
+        ],
+        "entities": []
+      },
+      {
+        "title": "Encore: the life and legacy of author John Marsden",
+        "description": "Growing up, John Marsden found school incredibly difficult and, as a teenager, spent time in hospital after a breakdown. This difficult early life profoundly shaped his work as a writer and educator of young people.",
+        "duration": "3120",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hn/Z/ce.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/acclaimed-australian-author-and-visionary-educator-john-marsden/106333708",
+        "transcript": " ABC Listen, podcasts, radio, news, music and more. Today is my conversation with the late John Marsden. John was a beloved children's author and a visionary educator who started his own school called Candle Bark in Victoria. I spoke with John in 2018. John Marsden was a high school English teacher when he wrote his first novel so much to tell you. John's writing took teenagers seriously and right from that first book they loved his novels. Tomorrow when the war began was the start of a series of books that imagined the invasion of Australia, resisted by a small band of teenagers waging guerrilla war. Long before the Hunger Games, John made young people the heroes of stories that had real consequences. But even as he became an internationally best-selling author, John never lost his love for teaching. In 1998 he bought a giant swag of natural bush on the northern edge of Melbourne and eventually started his own school there called Candle Bark. It's a school that John's described as somewhere between Steiner and the Simpsons. Hi John. Good day, sir. What works about that combination, Steiner and the Simpsons? Well, I shouldn't take too literally. I think I like the subversiveness of the Simpsons and the way it causes you to challenge your question or most every aspect of society. But I also like the fact that Steiner was on about being reflective and about big issues and profound thinking. There's stuff about the Steiner system I don't like and stuff about systems I don't like. But between the two is some sort of worthwhile area to explore I think. Let's go back into your childhood. What's your earliest memory, John? What comes to mind? Well, this is embarrassing being toilet trained. I remember sitting on the toilet and screaming and terror thinking of...",
+        "segments": [
+          {
+            "text": "ABC Listen, podcasts, radio, news, music and more.",
+            "start": 0.0,
+            "end": 7.0
+          },
+          {
+            "text": "Today is my conversation with the late John Marsden.",
+            "start": 7.0,
+            "end": 11.0
+          },
+          {
+            "text": "John was a beloved children's author and a visionary educator",
+            "start": 11.0,
+            "end": 15.0
+          },
+          {
+            "text": "who started his own school called Candle Bark in Victoria.",
+            "start": 15.0,
+            "end": 19.0
+          },
+          {
+            "text": "I spoke with John in 2018.",
+            "start": 19.0,
+            "end": 23.0
+          },
+          {
+            "text": "John Marsden was a high school English teacher when he wrote his first novel",
+            "start": 23.0,
+            "end": 27.0
+          },
+          {
+            "text": "so much to tell you.",
+            "start": 27.0,
+            "end": 29.0
+          },
+          {
+            "text": "John's writing took teenagers seriously and right from that first book",
+            "start": 29.0,
+            "end": 34.0
+          },
+          {
+            "text": "they loved his novels.",
+            "start": 34.0,
+            "end": 36.0
+          },
+          {
+            "text": "Tomorrow when the war began was the start of a series of books",
+            "start": 36.0,
+            "end": 39.0
+          },
+          {
+            "text": "that imagined the invasion of Australia,",
+            "start": 39.0,
+            "end": 41.0
+          },
+          {
+            "text": "resisted by a small band of teenagers waging guerrilla war.",
+            "start": 41.0,
+            "end": 45.0
+          },
+          {
+            "text": "Long before the Hunger Games,",
+            "start": 45.0,
+            "end": 47.0
+          },
+          {
+            "text": "John made young people the heroes of stories that had real consequences.",
+            "start": 47.0,
+            "end": 52.0
+          },
+          {
+            "text": "But even as he became an internationally best-selling author,",
+            "start": 52.0,
+            "end": 55.0
+          },
+          {
+            "text": "John never lost his love for teaching.",
+            "start": 56.0,
+            "end": 59.0
+          },
+          {
+            "text": "In 1998 he bought a giant swag of natural bush on the northern edge of Melbourne",
+            "start": 59.0,
+            "end": 63.0
+          },
+          {
+            "text": "and eventually started his own school there called Candle Bark.",
+            "start": 63.0,
+            "end": 67.0
+          },
+          {
+            "text": "It's a school that John's described as somewhere between Steiner and the Simpsons.",
+            "start": 67.0,
+            "end": 72.0
+          },
+          {
+            "text": "Hi John.",
+            "start": 72.0,
+            "end": 73.0
+          },
+          {
+            "text": "Good day, sir.",
+            "start": 73.0,
+            "end": 75.0
+          },
+          {
+            "text": "What works about that combination, Steiner and the Simpsons?",
+            "start": 75.0,
+            "end": 78.0
+          },
+          {
+            "text": "Well, I shouldn't take too literally.",
+            "start": 78.0,
+            "end": 81.0
+          },
+          {
+            "text": "I think I like the subversiveness of the Simpsons and the way it causes you to challenge your question",
+            "start": 82.0,
+            "end": 87.0
+          },
+          {
+            "text": "or most every aspect of society.",
+            "start": 87.0,
+            "end": 90.0
+          },
+          {
+            "text": "But I also like the fact that Steiner was on about being reflective",
+            "start": 90.0,
+            "end": 94.0
+          },
+          {
+            "text": "and about big issues and profound thinking.",
+            "start": 94.0,
+            "end": 97.0
+          },
+          {
+            "text": "There's stuff about the Steiner system I don't like and stuff about systems I don't like.",
+            "start": 97.0,
+            "end": 102.0
+          },
+          {
+            "text": "But between the two is some sort of worthwhile area to explore I think.",
+            "start": 102.0,
+            "end": 107.0
+          },
+          {
+            "text": "Let's go back into your childhood.",
+            "start": 107.0,
+            "end": 109.0
+          },
+          {
+            "text": "What's your earliest memory, John? What comes to mind?",
+            "start": 109.0,
+            "end": 112.0
+          },
+          {
+            "text": "Well, this is embarrassing being toilet trained.",
+            "start": 112.0,
+            "end": 115.0
+          },
+          {
+            "text": "I remember sitting on the toilet and screaming and terror thinking of...",
+            "start": 115.0,
+            "end": 119.0
+          }
+        ],
+        "chapters": [
+          {
+            "title": "Introduction to John Marsden's Legacy",
+            "summary": "Overview of John Marsden's career as an author and educator, including his school Candle Bark.",
+            "startTime": 0.0,
+            "endTime": 67.0
+          },
+          {
+            "title": "Candle Bark School Philosophy",
+            "summary": "Discussion of John Marsden's vision for Candle Bark, blending Steiner and Simpsons influences.",
+            "startTime": 67.0,
+            "endTime": 107.0
+          },
+          {
+            "title": "Childhood Memories",
+            "summary": "John Marsden reflects on his earliest childhood memories and toilet training experiences.",
+            "startTime": 107.0,
+            "endTime": 115.0
+          }
+        ],
+        "entities": []
+      },
+      {
+        "title": "There is magic to be found when the world goes dark",
+        "description": "Dan Richards investigates the multifaceted realm of night-time. Hear about when he survived a brush with death, a treacherous journey on a Scottish ferry, shadowing a search and rescue team, and the comfort and exquisite agony of new parenthood.",
+        "duration": "2971",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hm/Z/4d.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/dan-richards-overnight-night-time-service-fatherhood/106329046",
+        "transcript": " Corbin Middlemas here, the Ashes were awesome that they are over. The good news is the cricket keeps rolling as the focus shifts to the T20 World Cup. Australia is trying to climb back to the top, India is looking all powerful and England is trying to turn Ashes' shame in the T20 glory and did we mention the backroom power struggles? The ABC cricket podcast is dropping every Monday and Friday as former opener Ed Cowan joins me to pull apart the juiciest storyline in the game. Search for ABC cricket podcast wherever you get your podcasts. ABC Listen, Podcasts, Radio, News, Music and more. Well I was about 11 or 12 years old. I used to have sleepovers at a friend's house and at night we sometimes used to put our shoes on and sneak out of the house at around 3 a.m. Then we go wandering around the sleeping suburb. It was great because nothing looked the same. It was like the suburb had been pulled inside out. This wasn't to prank anyone. It was just so we could enjoy how strange and magical the streets looked while everything was dark and everyone was asleep. Except not everyone was asleep. Dan Richardson is here again on conversations to talk about those people who live in the night. Dan is a writer and broadcaster based in Scotland who feels the mystery and terror of the night in his bones. Over the past few years Dan has traveled out to meet people who commandeered the overnight ferry running from Aberdeen to the Shetland Islands, sometimes through Gale Force winds. He's been out to meet charity workers who combed the streets of London looking for rough sleepers. He's met helicopter search and rescue teams who go out in search of people who might be freezing to death. He's met nurses on the night shift and exhausted mums sitting up at 4 a.m. trying to get their baby to sleep. Dan's book is called Overno.",
+        "segments": [
+          {
+            "text": "Corbin Middlemas here, the Ashes were awesome that they are over.",
+            "start": 0.0,
+            "end": 3.52
+          },
+          {
+            "text": "The good news is the cricket keeps rolling as the focus shifts to the T20 World Cup.",
+            "start": 3.52,
+            "end": 8.0
+          },
+          {
+            "text": "Australia is trying to climb back to the top, India is looking all powerful and England",
+            "start": 8.0,
+            "end": 12.44
+          },
+          {
+            "text": "is trying to turn Ashes' shame in the T20 glory and did we mention the backroom power struggles?",
+            "start": 12.44,
+            "end": 18.28
+          },
+          {
+            "text": "The ABC cricket podcast is dropping every Monday and Friday as former opener Ed Cowan joins",
+            "start": 18.28,
+            "end": 23.36
+          },
+          {
+            "text": "me to pull apart the juiciest storyline in the game.",
+            "start": 23.36,
+            "end": 26.32
+          },
+          {
+            "text": "Search for ABC cricket podcast wherever you get your podcasts.",
+            "start": 26.32,
+            "end": 29.72
+          },
+          {
+            "text": "ABC Listen, Podcasts, Radio, News, Music and more.",
+            "start": 29.72,
+            "end": 35.32
+          },
+          {
+            "text": "Well I was about 11 or 12 years old.",
+            "start": 37.32,
+            "end": 40.32
+          },
+          {
+            "text": "I used to have sleepovers at a friend's house and at night we sometimes used to put our shoes",
+            "start": 40.32,
+            "end": 47.6
+          },
+          {
+            "text": "on and sneak out of the house at around 3 a.m.",
+            "start": 47.6,
+            "end": 54.08
+          },
+          {
+            "text": "Then we go wandering around the sleeping suburb.",
+            "start": 54.08,
+            "end": 57.08
+          },
+          {
+            "text": "It was great because nothing looked the same.",
+            "start": 57.08,
+            "end": 59.08
+          },
+          {
+            "text": "It was like the suburb had been pulled inside out.",
+            "start": 59.08,
+            "end": 63.08
+          },
+          {
+            "text": "This wasn't to prank anyone.",
+            "start": 63.08,
+            "end": 64.08
+          },
+          {
+            "text": "It was just so we could enjoy how strange and magical the streets looked while everything",
+            "start": 64.08,
+            "end": 70.36
+          },
+          {
+            "text": "was dark and everyone was asleep.",
+            "start": 70.36,
+            "end": 74.08
+          },
+          {
+            "text": "Except not everyone was asleep.",
+            "start": 74.08,
+            "end": 77.08
+          },
+          {
+            "text": "Dan Richardson is here again on conversations to talk about those people who live in the night.",
+            "start": 77.08,
+            "end": 83.08
+          },
+          {
+            "text": "Dan is a writer and broadcaster based in Scotland who feels the mystery and terror of the night",
+            "start": 83.08,
+            "end": 88.08
+          },
+          {
+            "text": "in his bones.",
+            "start": 88.08,
+            "end": 90.08
+          },
+          {
+            "text": "Over the past few years Dan has traveled out to meet people who commandeered the overnight",
+            "start": 90.08,
+            "end": 95.08
+          },
+          {
+            "text": "ferry running from Aberdeen to the Shetland Islands, sometimes through Gale Force winds.",
+            "start": 95.08,
+            "end": 100.08
+          },
+          {
+            "text": "He's been out to meet charity workers who combed the streets of London looking for rough sleepers.",
+            "start": 100.08,
+            "end": 105.08
+          },
+          {
+            "text": "He's met helicopter search and rescue teams who go out in search of people who might be freezing to death.",
+            "start": 105.08,
+            "end": 111.08
+          },
+          {
+            "text": "He's met nurses on the night shift and exhausted mums sitting up at 4 a.m.",
+            "start": 111.08,
+            "end": 116.08
+          },
+          {
+            "text": "trying to get their baby to sleep.",
+            "start": 116.08,
+            "end": 118.08
+          },
+          {
+            "text": "Dan's book is called Overno.",
+            "start": 118.08,
+            "end": 120.08
+          }
+        ],
+        "chapters": [
+          {
+            "title": "Cricket Podcast Introduction",
+            "summary": "Discussion of the T20 World Cup and cricket podcast promotion",
+            "startTime": 0.0,
+            "endTime": 30.0
+          },
+          {
+            "title": "Childhood Night Adventures",
+            "summary": "Personal story about sneaking out as a child to explore the night",
+            "startTime": 30.0,
+            "endTime": 74.0
+          },
+          {
+            "title": "Dan Richardson's Night Work",
+            "summary": "Introduction to Dan Richardson and his nocturnal investigations",
+            "startTime": 74.0,
+            "endTime": 118.0
+          },
+          {
+            "title": "Overnight Encounters",
+            "summary": "Details of Dan's encounters with night workers and his book",
+            "startTime": 118.0,
+            "endTime": 118.0
+          }
+        ],
+        "entities": []
+      },
+      {
+        "title": "Losing three mothers in one lifetime\u2014Layne Beachley's drive to win",
+        "description": "The legendary surfer has grieved the deaths of her adoptive mother, stepmother and birth mother. Only later in life did she realise her drive to win came from a place of loss, and Layne needed to look inward to find her place off the podium.",
+        "duration": "3168",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hg/Z/ki.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/layne-beachley-mothers-adoption-surfing/106319852",
+        "transcript": " Corbin Middlemas here, the Ashes were awesome that they are over. The good news is the cricket keeps rolling as the focus shifts to the T20 World Cup. Australia is trying to climb back to the top. India is looking all powerful and England is trying to turn Ashes' shame in the T20 glory. And did we mention the backroom power struggles? The ABC cricket podcast is dropping every Monday and Friday as former opener Ed Cowan joins me to pull apart the juiciest storylines in the game. Search for ABC cricket podcast wherever you get your podcasts. ABC Listen, podcasts, radio, news, music and more. Lane Beachley discovered surfing as a grommet growing up in Manly. And to say she talked to it is something of an understatement. Lane went on to win seven world championships, becoming the first woman to do so and the only surfer, male or female, to win six consecutive world titles. Lane's love of surfing was not the only thing driving her remarkable success. When Lane was a little girl, her dad Neil told her she was adopted. And from that moment, Lane questioned where she really belonged. She fought hard to prove to others and to herself that she was worthy of taking her place, developing a tough facade both on the water and off it, pushing through self-doubt, chronic fatigue and debilitating injuries to just keep winning. But at this stage of her life, Lane has found how to slow down and really enjoy her place in the world. Hi Lane. Hello Sarah. Can you remember the first wave you ever caught all the way to the beach? My earliest memories of surfing actually started on the harbourside at Manly. So my dad put me on a foamy when I was around three or four years of age and I stood up on it and waited for the fairies to come in to create that boatwake. We all owned a...",
+        "segments": [
+          {
+            "text": "Corbin Middlemas here, the Ashes were awesome that they are over.",
+            "start": 0.0,
+            "end": 3.52
+          },
+          {
+            "text": "The good news is the cricket keeps rolling as the focus shifts to the T20 World Cup.",
+            "start": 3.52,
+            "end": 8.0
+          },
+          {
+            "text": "Australia is trying to climb back to the top.",
+            "start": 8.0,
+            "end": 10.08
+          },
+          {
+            "text": "India is looking all powerful and England is trying to turn Ashes' shame in the T20 glory.",
+            "start": 10.08,
+            "end": 15.56
+          },
+          {
+            "text": "And did we mention the backroom power struggles?",
+            "start": 15.56,
+            "end": 18.24
+          },
+          {
+            "text": "The ABC cricket podcast is dropping every Monday and Friday as former opener Ed Cowan joins",
+            "start": 18.24,
+            "end": 23.4
+          },
+          {
+            "text": "me to pull apart the juiciest storylines in the game.",
+            "start": 23.4,
+            "end": 26.32
+          },
+          {
+            "text": "Search for ABC cricket podcast wherever you get your podcasts.",
+            "start": 26.32,
+            "end": 29.76
+          },
+          {
+            "text": "ABC Listen, podcasts, radio, news, music and more.",
+            "start": 29.76,
+            "end": 35.44
+          },
+          {
+            "text": "Lane Beachley discovered surfing as a grommet growing up in Manly.",
+            "start": 35.44,
+            "end": 40.92
+          },
+          {
+            "text": "And to say she talked to it is something of an understatement.",
+            "start": 40.92,
+            "end": 44.84
+          },
+          {
+            "text": "Lane went on to win seven world championships, becoming the first woman to do so and the",
+            "start": 44.84,
+            "end": 50.12
+          },
+          {
+            "text": "only surfer, male or female, to win six consecutive world titles.",
+            "start": 50.12,
+            "end": 56.28
+          },
+          {
+            "text": "Lane's love of surfing was not the only thing driving her remarkable success.",
+            "start": 56.28,
+            "end": 61.88
+          },
+          {
+            "text": "When Lane was a little girl, her dad Neil told her she was adopted.",
+            "start": 61.88,
+            "end": 66.6
+          },
+          {
+            "text": "And from that moment, Lane questioned where she really belonged.",
+            "start": 66.6,
+            "end": 70.96
+          },
+          {
+            "text": "She fought hard to prove to others and to herself that she was worthy of taking her place,",
+            "start": 70.96,
+            "end": 76.4
+          },
+          {
+            "text": "developing a tough facade both on the water and off it, pushing through self-doubt,",
+            "start": 76.4,
+            "end": 81.84
+          },
+          {
+            "text": "chronic fatigue and debilitating injuries to just keep winning.",
+            "start": 81.84,
+            "end": 87.12
+          },
+          {
+            "text": "But at this stage of her life, Lane has found how to slow down and really enjoy her place",
+            "start": 87.12,
+            "end": 92.28
+          },
+          {
+            "text": "in the world.",
+            "start": 92.28,
+            "end": 93.28
+          },
+          {
+            "text": "Hi Lane.",
+            "start": 93.28,
+            "end": 94.28
+          },
+          {
+            "text": "Hello Sarah.",
+            "start": 94.28,
+            "end": 95.44
+          },
+          {
+            "text": "Can you remember the first wave you ever caught all the way to the beach?",
+            "start": 95.44,
+            "end": 102.64
+          },
+          {
+            "text": "My earliest memories of surfing actually started on the harbourside at Manly.",
+            "start": 102.64,
+            "end": 108.76
+          },
+          {
+            "text": "So my dad put me on a foamy when I was around three or four years of age and I stood up",
+            "start": 108.76,
+            "end": 114.8
+          },
+          {
+            "text": "on it and waited for the fairies to come in to create that boatwake.",
+            "start": 114.8,
+            "end": 119.12
+          },
+          {
+            "text": "We all owned a...",
+            "start": 119.12,
+            "end": 119.96
+          }
+        ],
+        "chapters": [
+          {
+            "title": "Cricket updates and podcast intro",
+            "summary": "Introduction to cricket updates and the ABC podcast featuring Ed Cowan.",
+            "startTime": 0.0,
+            "endTime": 30.0
+          },
+          {
+            "title": "Layne Beachley's surfing journey",
+            "summary": "Layne Beachley's early surfing experiences and career achievements.",
+            "startTime": 30.0,
+            "endTime": 56.0
+          },
+          {
+            "title": "Adoption and self-identity struggles",
+            "summary": "Layne's discovery of her adoption and the impact on her self-worth.",
+            "startTime": 56.0,
+            "endTime": 87.0
+          },
+          {
+            "title": "Overcoming adversity and reflection",
+            "summary": "Layne's journey through injuries, fatigue, and finding peace with her identity.",
+            "startTime": 87.0,
+            "endTime": 119.0
+          }
+        ],
+        "entities": []
+      },
+      {
+        "title": "Encore: A 'hopeless romantic' on divorce, dating apps, and curing a broken heart",
+        "description": "After a painful divorce, Charlotte Ree began to piece her broken heart back together by cooking for her neighbours (R) Charlotte Ree grew up in a family full of love, but with its own particular challenges.",
+        "duration": "2880",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hh/Z/f7.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/charlotte-ree-broken-hearted-cure-cooking-baking-rpt/106316488",
+        "transcript": " Hi, it's Yumi Steynes from the Ladies We Need To Talk podcast. If you've never heard it before, let me explain it to you. Ladies We Need To Talk is a must-listen that goes deep on the stuff that really matters to women. If it's a topic going off in your group chat, we're across it with love, science and real life women telling their stories, from Perry Manopause to the Mental Load, fertility to friendship. Find Ladies We Need To Talk in the ABC Listen app. This is an ABC podcast. For author and home cook Charlotte Rhee, food is entangled in some of the most important moments of her life. All the way from childhood to adulthood, marriage, the perils of online dating, and from breakups to a long, awaited sense of self. Charlotte has a really lovely passage in the book where she talks about the way that heat can change things in cooking, but it can change people too when it seems there's no way out. Charlotte's book is called Heart Bake, a bittersweet memoir. Hello, Charlotte. Hello. Charlotte, at the start of your book, there is a beautiful photo of you as a little girl with your mum. Your mum's sitting on a step and you're leaning into her and she's kissing you on the forehead. What goes through your mind when you see that photo? It's like I've just put my whole weight on her and she's holding me and it's literally the one thing I would save in a fire. It's the only printed photo I have of the two of us and as my childhood developed into adulthood, it's kind of like one of very few photos I actually have with my mum. She's averse to them. So it's so special because it just, it sums us up. It's her holding me and she's always done that. And there's a lovely thing too that you've kind of got your arms limp at your...",
+        "segments": [
+          {
+            "text": "Hi, it's Yumi Steynes from the Ladies We Need To Talk podcast.",
+            "start": 0.0,
+            "end": 4.8
+          },
+          {
+            "text": "If you've never heard it before, let me explain it to you.",
+            "start": 4.8,
+            "end": 7.88
+          },
+          {
+            "text": "Ladies We Need To Talk is a must-listen that goes deep on the stuff that really matters",
+            "start": 7.88,
+            "end": 12.88
+          },
+          {
+            "text": "to women.",
+            "start": 12.88,
+            "end": 13.88
+          },
+          {
+            "text": "If it's a topic going off in your group chat, we're across it with love, science and real",
+            "start": 13.88,
+            "end": 18.68
+          },
+          {
+            "text": "life women telling their stories, from Perry Manopause to the Mental Load, fertility to",
+            "start": 18.68,
+            "end": 24.2
+          },
+          {
+            "text": "friendship.",
+            "start": 24.2,
+            "end": 25.2
+          },
+          {
+            "text": "Find Ladies We Need To Talk in the ABC Listen app.",
+            "start": 25.2,
+            "end": 28.2
+          },
+          {
+            "text": "This is an ABC podcast.",
+            "start": 31.0,
+            "end": 34.0
+          },
+          {
+            "text": "For author and home cook Charlotte Rhee, food is entangled in some of the most important",
+            "start": 34.0,
+            "end": 41.6
+          },
+          {
+            "text": "moments of her life.",
+            "start": 41.6,
+            "end": 43.84
+          },
+          {
+            "text": "All the way from childhood to adulthood, marriage, the perils of online dating, and from",
+            "start": 43.84,
+            "end": 50.52
+          },
+          {
+            "text": "breakups to a long, awaited sense of self.",
+            "start": 50.52,
+            "end": 54.64
+          },
+          {
+            "text": "Charlotte has a really lovely passage in the book where she talks about the way that heat",
+            "start": 54.64,
+            "end": 59.0
+          },
+          {
+            "text": "can change things in cooking, but it can change people too when it seems there's no",
+            "start": 59.0,
+            "end": 65.0
+          },
+          {
+            "text": "way out.",
+            "start": 65.0,
+            "end": 66.0
+          },
+          {
+            "text": "Charlotte's book is called Heart Bake, a bittersweet memoir.",
+            "start": 66.0,
+            "end": 70.48
+          },
+          {
+            "text": "Hello, Charlotte.",
+            "start": 70.48,
+            "end": 71.48
+          },
+          {
+            "text": "Hello.",
+            "start": 71.48,
+            "end": 72.48
+          },
+          {
+            "text": "Charlotte, at the start of your book, there is a beautiful photo of you as a little girl",
+            "start": 72.48,
+            "end": 79.2
+          },
+          {
+            "text": "with your mum.",
+            "start": 79.2,
+            "end": 80.2
+          },
+          {
+            "text": "Your mum's sitting on a step and you're leaning into her and she's kissing you on the",
+            "start": 80.2,
+            "end": 85.72
+          },
+          {
+            "text": "forehead.",
+            "start": 85.72,
+            "end": 86.72
+          },
+          {
+            "text": "What goes through your mind when you see that photo?",
+            "start": 86.72,
+            "end": 90.48
+          },
+          {
+            "text": "It's like I've just put my whole weight on her and she's holding me and it's literally",
+            "start": 90.48,
+            "end": 95.84
+          },
+          {
+            "text": "the one thing I would save in a fire.",
+            "start": 95.84,
+            "end": 98.04
+          },
+          {
+            "text": "It's the only printed photo I have of the two of us and as my childhood developed into",
+            "start": 98.04,
+            "end": 104.52
+          },
+          {
+            "text": "adulthood, it's kind of like one of very few photos I actually have with my mum.",
+            "start": 104.52,
+            "end": 108.28
+          },
+          {
+            "text": "She's averse to them.",
+            "start": 108.28,
+            "end": 109.68
+          },
+          {
+            "text": "So it's so special because it just, it sums us up.",
+            "start": 109.68,
+            "end": 113.32
+          },
+          {
+            "text": "It's her holding me and she's always done that.",
+            "start": 113.32,
+            "end": 116.4
+          },
+          {
+            "text": "And there's a lovely thing too that you've kind of got your arms limp at your...",
+            "start": 116.4,
+            "end": 119.92
+          }
+        ],
+        "chapters": [
+          {
+            "title": "Podcast Introduction and Overview",
+            "summary": "Host Yumi Steynes introduces the Ladies We Need To Talk podcast and its focus on women's issues.",
+            "startTime": 0.0,
+            "endTime": 34.0
+          },
+          {
+            "title": "Author Charlotte Rhee and Her Book",
+            "summary": "Charlotte Rhee discusses her book 'Heart Bake' and its exploration of life through food and personal experiences.",
+            "startTime": 34.0,
+            "endTime": 70.0
+          },
+          {
+            "title": "Childhood Memories and Family",
+            "summary": "Charlotte reflects on a cherished childhood photo with her mother and its emotional significance.",
+            "startTime": 70.0,
+            "endTime": 116.0
+          }
+        ],
+        "entities": []
+      },
+      {
+        "title": "You're not alone or broken\u2014the pursuit of happiness is making us miserable",
+        "description": "Philosopher and writer Eamon Evans on humanity's relentless and impossible pursuit of happiness through materialism, social media and self help, and why the kindest and best people have been 'crushed by life' a couple of times.",
+        "duration": "3138",
+        "audioUrl": "https://mediacore-live-production.akamaized.net/audio/02/hh/Z/5l.mp3",
+        "url": "https://www.abc.net.au/listen/programs/conversations/pursuit-of-happiness-making-us-miserable/106308016",
+        "transcript": " Corbin Middlemas here, the Ashes were awesome that they are over. The good news is the cricket keeps rolling as the focus shifts to the T20 World Cup. Australia is trying to climb back to the top. India is looking all powerful and England is trying to turn Ashes' shame in the T20 glory. And did we mention the backroom power struggles? The ABC cricket podcast is dropping every Monday and Friday as former opener Ed Cowan joins me to pull apart the juiciest storylines in the game. Search for ABC cricket podcast wherever you get your podcasts. ABC Listen, podcasts, radio, news, music and more. Aimen Effens is a Melbourne-based writer and philosopher. And he's here to tell you something that you might not want to hear about happiness. Aimen says that the relentless pursuit of happiness is as pointless as nailing jelly to a wall. And he says the idea that we have a rights to happiness is strictly quite strange and emotionally counterproductive. He says, when we keep trying to climb happiness mountain, it's only going to make us more miserable. And yet, the world keeps telling us that sadness is the enemy. And if you're feeling down, it's because you've got some kind of a problem. If you're not constantly happy and positive and committed, then something's wrong with you. It's better, Aimen says, to accept struggle and sadness as normal as part of a meaningful human life. And so he's here to speak up for the blessings of misery. Misery, he says, builds character, makes you more interesting and kinder. He's written a book and it's called The Importance of Being Misurable. Hello Aimen. Hello Richard, how are you doing? I'm happy to be here. I'm happy to have this fleeting, evidence thing called happiness is glimmered in front of me. It'll disappear momentarily. But it'll come back and fits and starts during the course of this conversation.",
+        "segments": [
+          {
+            "text": "Corbin Middlemas here, the Ashes were awesome that they are over.",
+            "start": 0.0,
+            "end": 3.52
+          },
+          {
+            "text": "The good news is the cricket keeps rolling as the focus shifts to the T20 World Cup.",
+            "start": 3.52,
+            "end": 8.0
+          },
+          {
+            "text": "Australia is trying to climb back to the top.",
+            "start": 8.0,
+            "end": 10.08
+          },
+          {
+            "text": "India is looking all powerful and England is trying to turn Ashes' shame in the T20 glory.",
+            "start": 10.08,
+            "end": 15.56
+          },
+          {
+            "text": "And did we mention the backroom power struggles?",
+            "start": 15.56,
+            "end": 18.24
+          },
+          {
+            "text": "The ABC cricket podcast is dropping every Monday and Friday as former opener Ed Cowan joins",
+            "start": 18.24,
+            "end": 23.4
+          },
+          {
+            "text": "me to pull apart the juiciest storylines in the game.",
+            "start": 23.4,
+            "end": 26.32
+          },
+          {
+            "text": "Search for ABC cricket podcast wherever you get your podcasts.",
+            "start": 26.32,
+            "end": 29.68
+          },
+          {
+            "text": "ABC Listen, podcasts, radio, news, music and more.",
+            "start": 29.68,
+            "end": 35.36
+          },
+          {
+            "text": "Aimen Effens is a Melbourne-based writer and philosopher.",
+            "start": 35.36,
+            "end": 39.68
+          },
+          {
+            "text": "And he's here to tell you something that you might not want to hear about happiness.",
+            "start": 39.68,
+            "end": 45.0
+          },
+          {
+            "text": "Aimen says that the relentless pursuit of happiness is as pointless as nailing jelly to",
+            "start": 45.0,
+            "end": 53.24
+          },
+          {
+            "text": "a wall.",
+            "start": 53.24,
+            "end": 54.24
+          },
+          {
+            "text": "And he says the idea that we have a rights to happiness is strictly quite strange and emotionally",
+            "start": 55.24,
+            "end": 61.84
+          },
+          {
+            "text": "counterproductive.",
+            "start": 61.84,
+            "end": 63.48
+          },
+          {
+            "text": "He says, when we keep trying to climb happiness mountain, it's only going to make us more miserable.",
+            "start": 63.48,
+            "end": 70.52
+          },
+          {
+            "text": "And yet, the world keeps telling us that sadness is the enemy.",
+            "start": 70.52,
+            "end": 75.52
+          },
+          {
+            "text": "And if you're feeling down, it's because you've got some kind of a problem.",
+            "start": 75.52,
+            "end": 79.6
+          },
+          {
+            "text": "If you're not constantly happy and positive and committed, then something's wrong with",
+            "start": 79.6,
+            "end": 83.8
+          },
+          {
+            "text": "you.",
+            "start": 83.8,
+            "end": 84.8
+          },
+          {
+            "text": "It's better, Aimen says, to accept struggle and sadness as normal as part of a meaningful",
+            "start": 84.8,
+            "end": 91.16
+          },
+          {
+            "text": "human life.",
+            "start": 91.16,
+            "end": 92.16
+          },
+          {
+            "text": "And so he's here to speak up for the blessings of misery.",
+            "start": 92.16,
+            "end": 97.16
+          },
+          {
+            "text": "Misery, he says, builds character, makes you more interesting and kinder.",
+            "start": 97.16,
+            "end": 103.0
+          },
+          {
+            "text": "He's written a book and it's called The Importance of Being Misurable.",
+            "start": 103.0,
+            "end": 106.48
+          },
+          {
+            "text": "Hello Aimen.",
+            "start": 106.48,
+            "end": 107.48
+          },
+          {
+            "text": "Hello Richard, how are you doing?",
+            "start": 107.48,
+            "end": 108.48
+          },
+          {
+            "text": "I'm happy to be here.",
+            "start": 108.48,
+            "end": 109.48
+          },
+          {
+            "text": "I'm happy to have this fleeting, evidence thing called happiness is glimmered in front of",
+            "start": 109.48,
+            "end": 114.2
+          },
+          {
+            "text": "me.",
+            "start": 114.2,
+            "end": 115.2
+          },
+          {
+            "text": "It'll disappear momentarily.",
+            "start": 115.2,
+            "end": 116.2
+          },
+          {
+            "text": "But it'll come back and fits and starts during the course of this conversation.",
+            "start": 116.2,
+            "end": 120.0
+          }
+        ],
+        "chapters": [
+          {
+            "title": "Introduction and Cricket Updates",
+            "summary": "The host discusses recent cricket events and introduces the podcast.",
+            "startTime": 0.0,
+            "endTime": 35.0
+          },
+          {
+            "title": "Introducing Aimen Effens",
+            "summary": "The host introduces philosopher Aimen Effens and his views on happiness.",
+            "startTime": 35.0,
+            "endTime": 40.0
+          },
+          {
+            "title": "The Philosophy of Misery and Happiness",
+            "summary": "Aimen argues that the pursuit of happiness is counterproductive and defends the value of misery.",
+            "startTime": 40.0,
+            "endTime": 116.0
+          }
+        ],
+        "entities": []
+      }
+    ],
+    "isPopular": true,
+    "isAwardWinning": false,
+    "reviews": [],
+    "narrativeHook": "Dive into the extraordinary life stories of remarkable individuals, revealing their hidden journeys and achievements.",
+    "vibe": {
+      "tone": "Inspirational",
+      "complexity": 0.5,
+      "pace": "Medium"
+    }
+  }
+];

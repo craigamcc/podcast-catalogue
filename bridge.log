@@ -1,0 +1,4 @@
+🌉 Starting PRISM HTTP Bridge...
+uvicorn podcast_catalogue.prism_http:app --reload --port 8000
+make: uvicorn: No such file or directory
+make: *** [run-http] Error 1

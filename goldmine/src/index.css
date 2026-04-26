@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&family=Orbitron:wght@400;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* Industrial-Noir Strategy Palette */
+  --bg-surface: #111318;
+  --bg-surface-dim: #0c0e12;
+  --bg-container-low: #1a1c20;
+  --bg-container: #1e2024;
+  --bg-container-high: #282a2e;
+  --bg-container-highest: #333539;
+
+  --primary: #8aebff;
+  --on-primary: #00363e;
+  --primary-container: #22d3ee;
+  
+  --secondary: #ffc640;
+  --on-secondary: #402d00;
+  --secondary-container: #e3aa00;
+
+  --tertiary: #68f5b8;
+  --on-tertiary: #003824;
+  --tertiary-container: #46d89d;
+
+  --text-primary: #e2e2e8;
+  --text-secondary: #bbc9cd;
+  --text-tertiary: #859397;
+  
+  --outline: #859397;
+  --outline-variant: rgba(133, 147, 151, 0.15); /* The "Ghost Border" */
+
+  --font-headline: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Orbitron', sans-serif;
+  --font-label: 'Space Grotesk', sans-serif;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-headline);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+  letter-spacing: -0.01em;
+}
+
+/* Tonal Layering - No-Line Rule */
+.surface-low { background-color: var(--bg-container-low); }
+.surface-base { background-color: var(--bg-container); }
+.surface-high { background-color: var(--bg-container-high); }
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+}
+
+/* Typography Hierarchy */
+.display-hero {
+  font-family: var(--font-headline);
+  font-weight: 900;
+  font-size: 3.5rem;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+}
+
+.headline-large {
+  font-family: var(--font-headline);
+  font-weight: 700;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+}
+
+.label-technical {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--text-tertiary);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Components */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s var(--ease-out-expo);
+  box-shadow: 0 4px 12px rgba(34, 211, 238, 0.2);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 20px rgba(138, 235, 255, 0.3);
+}
+
+.card-intelligence {
+  background-color: var(--bg-container-low);
+  padding: 24px;
+  border-radius: 8px;
+  transition: all 0.3s var(--ease-out-expo);
+  border: 1px solid transparent;
+}
+
+.card-intelligence:hover {
+  background-color: var(--bg-container);
+  border-color: var(--outline-variant);
+}
+
+/* Animations */
+.pulse-glow {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(138, 235, 255, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(138, 235, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(138, 235, 255, 0); }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s var(--ease-out-expo) forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: var(--bg-container-highest); border-radius: 3px; }
+
+/* Grid Layouts */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
