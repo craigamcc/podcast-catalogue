@@ -1,126 +1,161 @@
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Union, Dict, Any
+from pydantic import BaseModel, Field
 
 
-def _ts_literal(value: Optional[str]) -> str:
-    return json.dumps(value) if value is not None else "null"
-
-
-@dataclass
-class Location:
+class Location(BaseModel):
     country: Optional[str] = None
     state: Optional[str] = None
     city: Optional[str] = None
 
-    def to_typescript(self, indent: str = "        ") -> str:
-        parts = [
-            f"country: {_ts_literal(self.country)}",
-            f"state: {_ts_literal(self.state)}",
-            f"city: {_ts_literal(self.city)}",
-        ]
-        formatted = ", ".join(parts)
-        return "{ " + formatted + " }"
+class GuestProfile(BaseModel):
+    name: str
+    expertise: Optional[str] = None
+    bio: Optional[str] = None
+    social_links: List[str] = Field(default_factory=list, alias="socialLinks")
+
+    class Config:
+        populate_by_name = True
+
+class EntityProfile(BaseModel):
+    name: str = Field(alias="entity_name")
+    description: Optional[str] = None
+    category: Optional[str] = None
+
+    class Config:
+        populate_by_name = True
 
 
-@dataclass
-class TargetAudience:
-    interests: List[str] = field(default_factory=list)
-    age_groups: List[str] = field(default_factory=list)
-    location: Location = field(default_factory=Location)
+class TargetAudience(BaseModel):
+    interests: List[str] = Field(default_factory=list)
+    age_groups: List[str] = Field(default_factory=list, alias="ageGroups")
+    location: Location = Field(default_factory=Location)
 
-    def to_typescript(self, indent: str = "      ") -> str:
-        interests_ts = (
-            "[" + ", ".join(json.dumps(item) for item in self.interests) + "]"
-            if self.interests
-            else "[]"
-        )
-        age_groups_ts = (
-            "[" + ", ".join(json.dumps(item) for item in self.age_groups) + "]"
-            if self.age_groups
-            else "[]"
-        )
-        location_ts = self.location.to_typescript(indent=indent + "  ")
-        inner_indent = indent + "  "
-        return (
-            "{\n"
-            f"{inner_indent}interests: {interests_ts},\n"
-            f"{inner_indent}ageGroups: {age_groups_ts},\n"
-            f"{inner_indent}location: {location_ts}\n"
-            f"{indent}" + "}"
-        )
+    class Config:
+        populate_by_name = True
 
 
-@dataclass
-class Podcast:
+class Vibe(BaseModel):
+    tone: List[str] = Field(default_factory=list)
+    complexity: Optional[float] = None
+    pace: Optional[str] = None
+
+
+class TranscriptSegment(BaseModel):
+    text: str
+    start: float
+    end: float
+    speaker: Optional[str] = None
+
+
+class Chapter(BaseModel):
     title: str
-    host_information: Optional[str]
-    description: Optional[str]
-    genres: List[str] = field(default_factory=list)
+    summary: str
+    start_time: float = Field(alias="startTime")
+    end_time: float = Field(alias="endTime")
+
+    class Config:
+        populate_by_name = True
+
+
+class Highlight(BaseModel):
+    title: str
+    reason: str
+    category: str = "GENERAL"  # QUOTE, STAT, PEAK, INSIGHT, GENERAL
+    start_time: float = Field(alias="startTime")
+    end_time: float = Field(alias="endTime")
+
+    class Config:
+        populate_by_name = True
+
+class EngagementIntelligence(BaseModel):
+    takeaway: Optional[str] = None
+    key_statistics: List[str] = Field(default_factory=list, alias="keyStatistics")
+    best_quotes: List[str] = Field(default_factory=list, alias="bestQuotes")
+    why_listen: Optional[str] = Field(None, alias="whyListen")
+    social_post: Optional[str] = Field(None, alias="socialPost")
+    audiogram_captions: List[Dict[str, Any]] = Field(default_factory=list, alias="audiogramCaptions")
+
+    class Config:
+        populate_by_name = True
+
+
+class Episode(BaseModel):
+    title: str
+    description: Optional[str] = None
+    published_at: Optional[str] = Field(None, alias="publishedAt")
+    duration: Optional[str] = None
+    audio_url: Optional[str] = Field(None, alias="audioUrl")
+    url: Optional[str] = None # The page URL, needed for deep crawling
+    transcript: Optional[str] = None
+    
+    # Timestamped Segments (from Whisper)
+    segments: List[TranscriptSegment] = Field(default_factory=list)
+    
+    # AI-generated Chapters
+    chapters: List[Chapter] = Field(default_factory=list)
+    
+    # AI-detected Highlights (most exciting moments)
+    highlights: List[Highlight] = Field(default_factory=list)
+    
+    # Content hash for incremental skipping
+    content_hash: Optional[str] = Field(None, alias="contentHash")
+    
+    # AI Enrichment
+    narrative_hook: Optional[str] = Field(None, alias="narrativeHook")
+    vibe: Optional[Vibe] = Field(None, alias="vibe")
+    entities: List[Union[str, EntityProfile]] = Field(default_factory=list)
+    content_locations: List[Location] = Field(default_factory=list, alias="contentLocations")
+    guests: List[GuestProfile] = Field(default_factory=list)
+    engagement: Optional[EngagementIntelligence] = None
+
+    class Config:
+        populate_by_name = True
+
+
+class Review(BaseModel):
+    author: str
+    rating: float
+    content: str
+    date: Optional[str] = None
+
+class Podcast(BaseModel):
+    title: str
+    host_information: Optional[str] = Field(None, alias="hostInformation")
+    description: Optional[str] = None
     language: Optional[str] = None
-    target_audience: TargetAudience = field(default_factory=TargetAudience)
-    recommendation_scenarios: List[str] = field(default_factory=list)
-    recommendation_reasons: List[str] = field(default_factory=list)
-    abc_podcast_page: Optional[str] = None
-    apple_podcast_page: Optional[str] = None
-    spotify_podcast_page: Optional[str] = None
-    youtube_page: Optional[str] = None
-    other_review_links: List[str] = field(default_factory=list)
-    is_popular: bool = False
-    is_award_winning: bool = False
+    target_audience: TargetAudience = Field(default_factory=TargetAudience, alias="targetAudience")
+    recommendation_scenarios: List[str] = Field(default_factory=list, alias="recommendationScenarios")
+    recommendation_reasons: List[str] = Field(default_factory=list, alias="recommendationReasons")
+    abc_podcast_page: Optional[str] = Field(None, alias="abcPodcastPage")
+    image_url: Optional[str] = Field(None, alias="imageUrl")
+    apple_podcast_page: Optional[str] = Field(None, alias="applePodcastPage")
+    spotify_podcast_page: Optional[str] = Field(None, alias="spotifyPodcastPage")
+    youtube_page: Optional[str] = Field(None, alias="youtubePage")
+    other_review_links: List[str] = Field(default_factory=list, alias="otherReviewLinks")
+    episodes: List[Episode] = Field(default_factory=list)
+    is_popular: bool = Field(False, alias="isPopular")
+    is_award_winning: bool = Field(False, alias="isAwardWinning")
 
-    def to_typescript(self, indent: str = "  ") -> str:
-        inner_indent = indent + "  "
-        target_ts = self.target_audience.to_typescript(indent=inner_indent)
-        genre_value = ", ".join(self.genres) if self.genres else ""
-        scenarios_ts = (
-            "[" + ", ".join(json.dumps(s) for s in self.recommendation_scenarios) + "]"
-            if self.recommendation_scenarios
-            else "[]"
-        )
-        reasons_ts = (
-            "[" + ", ".join(json.dumps(r) for r in self.recommendation_reasons) + "]"
-            if self.recommendation_reasons
-            else "[]"
-        )
-        other_links_ts = (
-            "[" + ", ".join(json.dumps(link) for link in self.other_review_links) + "]"
-            if self.other_review_links
-            else "[]"
-        )
+    # Enrichment Data
+    average_rating: Optional[float] = Field(None, alias="averageRating")
+    rating_count: Optional[int] = Field(None, alias="ratingCount")
+    itunes_id: Optional[int] = Field(None, alias="itunesId")
+    primary_genre: Optional[str] = Field(None, alias="primaryGenre")
+    apple_genres: Optional[List[str]] = Field(None, alias="appleGenres")
+    reviews: List[Review] = Field(default_factory=list)
+    
+    # AI Enrichment
+    narrative_hook: Optional[str] = Field(None, alias="narrativeHook")
+    vibe: Optional[Vibe] = Field(None, alias="vibe")
+    origin_location: Location = Field(default_factory=Location, alias="originLocation")
+    geographic_coverage: List[Location] = Field(default_factory=list, alias="geographicCoverage")
+    scouting_priority: float = Field(0.0, alias="scoutingPriority")
 
-        fields = [
-            f"{inner_indent}title: {json.dumps(self.title)}",
-            f"{inner_indent}hostInformation: {_ts_literal(self.host_information)}",
-            f"{inner_indent}description: {_ts_literal(self.description)}",
-            f"{inner_indent}genre: {json.dumps(genre_value)}",
-            f"{inner_indent}language: {_ts_literal(self.language)}",
-            f"{inner_indent}targetAudience: {target_ts}",
-            f"{inner_indent}recommendationScenarios: {scenarios_ts}",
-            f"{inner_indent}recommendationReasons: {reasons_ts}",
-            f"{inner_indent}abcPodcastPage: {_ts_literal(self.abc_podcast_page)}",
-            f"{inner_indent}applePodcastPage: {_ts_literal(self.apple_podcast_page)}",
-        ]
+    class Config:
+        populate_by_name = True
 
-        if self.spotify_podcast_page:
-            fields.append(f"{inner_indent}spotifyPodcastPage: {_ts_literal(self.spotify_podcast_page)}")
-        if self.youtube_page:
-            fields.append(f"{inner_indent}youtubePage: {_ts_literal(self.youtube_page)}")
-        if self.other_review_links:
-            fields.append(f"{inner_indent}otherReviewLinks: {other_links_ts}")
-
-        fields.extend(
-            [
-                f"{inner_indent}isPopular: {str(self.is_popular).lower()}",
-                f"{inner_indent}isAwardWinning: {str(self.is_award_winning).lower()}",
-            ]
-        )
-
-        lines = []
-        for index, field in enumerate(fields):
-            suffix = "," if index < len(fields) - 1 else ""
-            lines.append(f"{field}{suffix}")
-
-        return "{\n" + "\n".join(lines) + f"\n{indent}" + "}"
+# Rebuild models for Union/Forward references
+Episode.model_rebuild()
+Podcast.model_rebuild()

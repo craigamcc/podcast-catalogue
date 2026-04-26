@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "podcast-catalogue"
+version = "1.0.0"
+description = "A robust toolkit for generating structured podcast catalogues from ABC Listen, with AI enrichment, transcription, and speaker diarization."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Craig McCosker"}
+]
+
+dependencies = [
+    "aiohttp",
+    "beautifulsoup4",
+    "pydantic>=2.0",
+    "certifi",
+    "mlx-whisper",
+    "torchaudio",
+    "speechbrain",
+    "scikit-learn",
+    "chromadb",
+]
+
+[project.optional-dependencies]
+mcp = ["mcp"]
+dev = ["pytest"]
+
+[project.scripts]
+podcast-catalogue = "podcast_catalogue.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["podcast_catalogue*"]

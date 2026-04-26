@@ -1,2 +1,26 @@
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Data & cache
+data/chroma_db/
+.cache/
+*.wav
+
+# Debug files
+debug_*.json
+sample_ld.json
+test_*.jsonl
+sitemap-*.xml.gz
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+.env

@@ -1,38 +1,97 @@
-# podcast-catalogue
+# 🏆 GoldMine: The Intelligence Hub
 
-Utilities for generating a TypeScript friendly podcast catalogue from ABC Listen metadata.
+GoldMine is a high-performance, autonomous intelligence engine that transforms unstructured media into a high-fidelity semantic graph. Built for extreme narrative density, GoldMine powers the **Connect** and **Daisy** situational intelligence ecosystems.
 
-## Features
+---
 
-- Crawls the ABC A–Z podcast listing and collects each podcast page.
-- Cross-references the ABC Listen landing page to mark shows flagged as **Popular** or **Award Winning**, exposing the values as `isPopular` and `isAwardWinning` booleans.
-- Extracts structured podcast information from JSON-LD metadata when available.
-- Captures external review links (Apple Podcasts, Spotify, YouTube, etc.) referenced by ABC and surfaces the Apple Podcasts URL via `applePodcastPage` in the export.
-- Produces a ready-to-use TypeScript export that mirrors the expected `Podcast[]` shape used by LLM recommendation tooling, matching the catalogue examples shared above.
+## 🚀 2026 Semantic Tech Stack
 
-## Usage
+| Component | Technology | Impact |
+|:---|:---|:---|
+| **Transcription** | MLX Whisper Large v3 Turbo | 809M parameter accuracy at bare-metal speeds. |
+| **Local Scout** | **Qwen 3.5** (Default) | State-of-the-art JSON extraction and narrative logic. |
+| **Cloud Strike** | **Gemini 1.5 Flash** | Zero-latency, zero-error "Deep Scout" intelligence extraction. |
+| **Diarization** | Pyannote.audio 4.0 | Neural end-to-end speaker tracking with native STT alignment. |
+| **Bridge** | **FastAPI + MCP** | Unified intelligence backend serving the GoldMine intelligence feed. |
 
-1. Ensure you have Python 3.11 available.
-2. Run the CLI, providing an output path for the generated TypeScript file:
+---
 
+## 🛠 Hardened v6.15 Features
+
+1.  **Gold Run Pipeline**: A multi-stage intelligence pass (Download -> Transcribe -> Scout) designed for high-fidelity extraction.
+2.  **Merge-on-Write Safety**: Filtered scouting passes now merge results into the existing catalogue instead of truncating it, protecting the 451-show foundation.
+3.  **The Engagement Layer (v5.9)**: Moves beyond simple summarization to extract **Takeaways**, **Key Statistics**, **Verbatim Quotes**, and **Audiogram Blueprints**.
+4.  **Stage-Only Execution**: Ability to run specific parts of the pipeline (e.g., `--stage scout-enrich`) to refine intelligence on existing data.
+
+---
+
+## 📦 Data Model: `podcasts_450_full_intelligence.jsonl`
+The canonical "Golden Record" contains fully hydrated `Podcast` objects with:
+- **Narrative Hooks & Vibes** (Tone, Complexity, Pace)
+- **Semantic Chapters** (with auto-generated summaries)
+- **Engagement Layer**: Verbatim quotes, stats, andProvocative social posts.
+- **Audio Context**: Digitally extracted transcripts with timestamped segments.
+
+---
+
+## 🎮 Operations
+
+### ⛏️ The "Gold Run" (Full Strike)
+Execute the complete end-to-end cycle for the entire network.
 ```bash
-python -m podcast_catalogue.cli --output data/podcasts.ts
+python3 -m podcast_catalogue.cli --input data/goldmine_alpha.jsonl --output data/goldmine_alpha.jsonl --deep-crawl --transcribe --scout-enrich --provider gemini --force
 ```
 
-Optional arguments:
-
-- `--index-url`: Override the ABC A–Z listing URL.
-- `--flags-url`: Override the ABC landing page URL for Popular/Award Winning data.
-- `--index-file`: Use a local HTML file instead of fetching the A–Z listing.
-- `--flags-file`: Use a local HTML file instead of fetching the landing page (useful when network access is restricted).
-- `--var-name`: Change the exported constant name (default `MOCKED_PODCASTS`).
-
-When running in a network-restricted environment, first download the necessary HTML pages and supply them via `--index-file` and `--flags-file`. The CLI will still visit each individual podcast link; use a tool such as `wget` to create a local mirror if full offline processing is required.
-
-## Testing
-
-Run the unit tests with:
-
+### 🎯 The "Flagship Scout" (Filtered)
+Target specific high-value shows without clobbering the foundation.
 ```bash
-python -m unittest discover
+python3 -m podcast_catalogue.cli --input data/goldmine_alpha.jsonl --stage scout-enrich --filter "Conversations|Mind|Health" --force
 ```
+
+### 📡 Start the Intelligence Bridge (Port 8000)
+```bash
+python3 -m podcast_catalogue.server
+```
+
+---
+
+## 🎯 Strategic Use Cases
+
+GoldMine is designed to serve as the "Neural Backbone" for media organizations, enabling:
+
+1.  **Agentic Access & Discovery**: Agents can search spoken content, auto-generate summaries, and create "related listening" bundles tied to breaking news.
+2.  **Generative Augmentation**: Automated assembly of "Bonus Segments" or briefings by remixing the existing catalogue.
+3.  **Production Monitoring**: Real-time monitoring of new episodes to auto-produce show notes, social assets, and SEO metadata.
+4.  **Living Knowledge Base**: A structured, semantic repository that agents can remix and repurpose at scale without manual effort.
+5.  **Video as First-Class Data**: Querying via DAM metadata and transcripts to generate clip reels and video briefs.
+6.  **Content Creation Flywheel**: Instantly surfacing B-roll and suggesting edits for promo versions tailored to different audiences.
+7.  **Headless Unlock**: An API-first surface (FastAPI + MCP) that agents can call directly for any media intelligence task.
+8.  **Dynamic Live Blog Enrichment**: Auto-enriching live blogs with fresh clips, archive context, and fact-checks.
+9.  **Human-in-the-Loop Scrutiny**: "Machine-speed" grunt work that flags discrepancies for editors, ensuring high-fidelity reporting with less manual overhead.
+10. **Personalization at Scale**: Automated generation of audience-specific versions (e.g., simplified for younger viewers or localized for different regions) without additional staff.
+
+---
+
+## 🗺 Roadmap
+
+- [x] **Phase 1: Hardening** - Multi-stage pipeline, engagement layer, and semantic search.
+- [ ] **Phase 2: Multimodal Expansion** - Integration of Video/DAM data and multimodal reasoning (Gemini 1.5 Pro).
+- [ ] **Phase 3: Generative Assembly** - Automated "Remix" service for creating new media assets from the catalogue.
+- [ ] **Phase 4: Global Agentic Bridge** - Full MCP standardization for seamless integration into any AI ecosystem.
+
+---
+
+## 🏗 Architecture
+
+```
+podcast_catalogue/
+├── cli.py            # GoldMine Commander (Unified CLI)
+├── server.py         # FastAPI + MCP Intelligence Bridge
+├── ai_enricher.py    # Scout Logic (Qwen/Gemini Integration)
+├── pipeline.py       # Multi-Stage Orchestration Logic
+├── models.py         # GoldMine Core Ontology (Pydantic)
+```
+
+---
+
+*Powered by GoldMine & MLX.*

@@ -1,59 +1,24 @@
 from __future__ import annotations
+
 import json
 import re
-from dataclasses import dataclass, field
-from html.parser import HTMLParser
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, List, Optional, Any
 from urllib.parse import urljoin
+import datetime
 
-from .models import Location, Podcast, TargetAudience
+from bs4 import BeautifulSoup
 
-JSON_LD_RE = re.compile(r"<script[^>]+type=\"application/ld\+json\"[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE)
+from .models import Location, Podcast, TargetAudience, Episode
+
 WHITESPACE_RE = re.compile(r"\s+")
 
 
-@dataclass
-class _Link:
-    href: str
-    text: str
-
-
-@dataclass
 class ReviewLinks:
-    apple: Optional[str] = None
-    spotify: Optional[str] = None
-    youtube: Optional[str] = None
-    others: List[str] = field(default_factory=list)
-
-
-class _LinkCollector(HTMLParser):
-    def __init__(self, predicate):
-        super().__init__()
-        self.predicate = predicate
-        self.links: List[_Link] = []
-        self._current_href: Optional[str] = None
-        self._text_parts: List[str] = []
-
-    def handle_starttag(self, tag, attrs):
-        if tag != "a":
-            return
-        attr_dict = dict(attrs)
-        href = attr_dict.get("href")
-        if href and self.predicate(href):
-            self._current_href = href
-            self._text_parts = []
-
-    def handle_data(self, data):
-        if self._current_href is not None:
-            self._text_parts.append(data)
-
-    def handle_endtag(self, tag):
-        if tag == "a" and self._current_href is not None:
-            text = clean_text("".join(self._text_parts))
-            self.links.append(_Link(self._current_href, text))
-            self._current_href = None
-            self._text_parts = []
-
+    def __init__(self, apple: Optional[str] = None, spotify: Optional[str] = None, youtube: Optional[str] = None):
+        self.apple = apple
+        self.spotify = spotify
+        self.youtube = youtube
+        self.others: List[str] = []
 
 def clean_text(value: Optional[str]) -> str:
     if not value:
@@ -61,214 +26,155 @@ def clean_text(value: Optional[str]) -> str:
     return WHITESPACE_RE.sub(" ", value).strip()
 
 
-def extract_json_ld_objects(html: str) -> List[dict]:
-    objects: List[dict] = []
-    for match in JSON_LD_RE.finditer(html):
-        try:
-            raw = match.group(1)
-            data = json.loads(raw)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(data, list):
-            objects.extend(obj for obj in data if isinstance(obj, dict))
-        elif isinstance(data, dict):
-            objects.append(data)
-    return objects
+def extract_nextjs_data(soup: BeautifulSoup) -> Optional[Dict[str, Any]]:
+    """Extracts the __NEXT_DATA__ JSON blob."""
+    script = soup.find("script", id="__NEXT_DATA__")
+    if not script or not script.string:
+        return None
+    try:
+        return json.loads(script.string)
+    except json.JSONDecodeError:
+        return None
 
 
-def _find_podcast_schema(objects: Iterable[dict]) -> Optional[dict]:
-    for obj in objects:
-        type_field = obj.get("@type")
-        if isinstance(type_field, list):
-            types = [str(t).lower() for t in type_field]
-        else:
-            types = [str(type_field).lower()] if type_field else []
-        if any("podcast" in t for t in types):
-            return obj
-    return None
+def get_program_data_from_nextjs(data: Dict[str, Any], base_url: str) -> Optional[Dict[str, Any]]:
+    """Traverses the Next.js props to find the main program entity and episodes."""
+    props = data.get("props", {}).get("pageProps", {})
+    
+    analytics = props.get("pageAnalytics", {}).get("document", {})
+    program_info = analytics.get("program", {})
+    hero = props.get("heroImageWithCTAPrepared", {})
+    head_tags = props.get("headTagsPagePrepared", {})
+    
+    episodes_data = []
 
+    # Helper to construct absolute URL
+    def make_absolute(link):
+        if not link: return None
+        if link.startswith("http"): return link
+        # Handle Next.js paths which might be relative or absolute path only
+        if link.startswith("/"):
+             return f"https://www.abc.net.au{link}"
+        return urljoin("https://www.abc.net.au", link)
 
-def parse_podcast_links(index_html: str, base_url: str) -> List[str]:
-    def predicate(href: str) -> bool:
-        return "/listen/programs/" in href
+    # Strategy 1: Check programCollectionPrepared (Common for program pages)
+    collection = props.get("programCollectionPrepared")
+    if collection and "items" in collection:
+        for item in collection["items"]:
+            # Valid episode check: usually has cardMediaIndicator or duration implies audio
+            media = item.get("cardMediaIndicatorPrepared") or {}
+            
+            title = item.get("cardTitle")
+            if title:
+                ep_url = make_absolute(item.get("articleLink") or item.get("link") or item.get("to"))
+                published_at = item.get("contentLabelPrepared")
+                if not published_at and item.get("cardAttributionPrepared"):
+                    published_at = item["cardAttributionPrepared"].get("publishedDate")
+                
+                ep = {
+                    "title": title,
+                    "description": item.get("description"),
+                    "publishedAt": published_at,
+                    "duration": str(media.get("duration")) if media.get("duration") else None,
+                    "url": ep_url
+                }
+                episodes_data.append(ep)
 
-    collector = _LinkCollector(predicate)
-    collector.feed(index_html)
-    unique: Dict[str, str] = {}
-    for link in collector.links:
-        absolute = urljoin(base_url, link.href)
-        unique[absolute] = link.text or absolute
-    return sorted(unique.keys())
+    # Strategy 2: Check standard componentsContent (for generic pages or different layouts)
+    if not episodes_data:
+        components = props.get("data", {}).get("componentsContent", [])
+        for comp in components:
+            if "items" in comp.get("componentProps", {}):
+                 items = comp["componentProps"]["items"]
+                 for item in items:
+                     if "title" in item and "url" in item:
+                         ep = {
+                             "title": item.get("title"),
+                             "description": item.get("teaserText") or item.get("synopsis"),
+                             "publishedAt": item.get("published"),
+                             "duration": item.get("duration"),
+                             "url": make_absolute(item.get("url") or item.get("link"))
+                         }
+                         episodes_data.append(ep)
 
-
-def parse_flag_sections(flags_html: str, base_url: str) -> Dict[str, List[str]]:
-    sections: Dict[str, List[str]] = {}
-    current_heading: Optional[str] = None
-
-    class FlagParser(HTMLParser):
-        def handle_starttag(self, tag, attrs):
-            nonlocal current_heading
-            if tag in {"h2", "h3"}:
-                current_heading = ""
-            elif tag == "a" and current_heading is not None:
-                attr_dict = dict(attrs)
-                href = attr_dict.get("href")
-                if href and "/listen/programs/" in href:
-                    absolute = urljoin(base_url, href)
-                    heading_key = clean_text(current_heading)
-                    if heading_key:
-                        sections.setdefault(heading_key, []).append(absolute)
-
-        def handle_data(self, data):
-            nonlocal current_heading
-            if current_heading is not None:
-                current_heading += data
-
-        def handle_endtag(self, tag):
-            nonlocal current_heading
-            if tag in {"h2", "h3"} and current_heading is not None:
-                current_heading = clean_text(current_heading)
-
-    parser = FlagParser()
-    parser.feed(flags_html)
-
-    flag_map: Dict[str, List[str]] = {}
-    for heading, links in sections.items():
-        flag_label = None
-        lower_heading = heading.lower()
-        if "popular" in lower_heading:
-            flag_label = "Popular"
-        elif "award" in lower_heading:
-            flag_label = "Award Winning"
-        if not flag_label:
-            continue
-        for link in links:
-            flag_map.setdefault(link, []).append(flag_label)
-    return flag_map
-
-
-def _normalise_list(value) -> List[str]:
-    if isinstance(value, list):
-        return [clean_text(str(item)) for item in value if clean_text(str(item))]
-    if value:
-        return [clean_text(str(value))]
-    return []
-
-
-def _extract_host(schema: dict) -> Optional[str]:
-    creator = schema.get("creator") or schema.get("author") or schema.get("host")
-    if isinstance(creator, list):
-        names = []
-        for item in creator:
-            if isinstance(item, dict) and item.get("name"):
-                names.append(clean_text(str(item["name"])))
-            elif item:
-                names.append(clean_text(str(item)))
-        return ", ".join(name for name in names if name)
-    if isinstance(creator, dict) and creator.get("name"):
-        return clean_text(str(creator["name"]))
-    if isinstance(creator, str):
-        return clean_text(creator)
-    return None
-
-
-def _derive_target_audience(schema: dict, description: str) -> TargetAudience:
-    interests = []
-    genres = _normalise_list(schema.get("genre"))
-    if genres:
-        interests.extend(genres)
-    keywords = _normalise_list(schema.get("keywords"))
-    for keyword in keywords:
-        if keyword not in interests:
-            interests.append(keyword)
-    if description:
-        lowered = description.lower()
-        if "children" in lowered or "kids" in lowered:
-            age_groups = ["Children"]
-        elif "teen" in lowered:
-            age_groups = ["Teens"]
-        else:
-            age_groups = ["Adults"]
-    else:
-        age_groups = ["Adults"]
-    language = clean_text(str(schema.get("inLanguage"))) if schema.get("inLanguage") else None
-    location = Location(country="Australia" if language and "english" in language.lower() else None)
-    target = TargetAudience(interests=interests, age_groups=age_groups, location=location)
-    return target
-
-
-def _derive_recommendations(genres: List[str], description: str) -> (List[str], List[str]):
-    scenarios: List[str] = []
-    reasons: List[str] = []
-    lower_genres = [g.lower() for g in genres]
-    lowered_description = description.lower() if description else ""
-
-    if any(g in lower_genres for g in ["news", "current affairs"]):
-        scenarios.append("Staying informed")
-        reasons.append("Covers current events with timely analysis.")
-    if any(g in lower_genres for g in ["comedy", "entertainment"]):
-        scenarios.append("Relaxing")
-        reasons.append("Light-hearted content ideal for winding down.")
-    if any(g in lower_genres for g in ["education", "history", "science"]):
-        if "Learning" not in scenarios:
-            scenarios.append("Learning")
-        reasons.append("Informative episodes that deepen subject knowledge.")
-    if any(g in lower_genres for g in ["sport", "sports"]):
-        scenarios.append("Commute")
-        reasons.append("Quick updates perfect for listening on the go.")
-    if not scenarios and lowered_description:
-        scenarios.append("General listening")
-        reasons.append("Engaging storytelling suitable for most situations.")
-
-    # Deduplicate while preserving order
-    def dedupe(values: List[str]) -> List[str]:
-        seen = set()
-        result = []
-        for value in values:
-            if value not in seen:
-                seen.add(value)
-                result.append(value)
-        return result
-
-    return dedupe(scenarios), dedupe(reasons)
-
-
-def parse_review_links(html: str, base_url: str) -> ReviewLinks:
-    collector = _LinkCollector(lambda href: True)
-    collector.feed(html)
-    review_links = ReviewLinks()
-    seen: set[str] = set()
-    for link in collector.links:
-        href = link.href
-        if href.startswith("/"):
-            href = urljoin(base_url, href)
-        lower_href = href.lower()
-        if href in seen:
-            continue
-        seen.add(href)
-        if "podcasts.apple.com" in lower_href:
-            review_links.apple = review_links.apple or href
-        elif "spotify.com" in lower_href:
-            review_links.spotify = review_links.spotify or href
-        elif "youtube.com" in lower_href or "youtu.be" in lower_href:
-            review_links.youtube = review_links.youtube or href
-        elif any(domain in lower_href for domain in ["podchaser.com", "listennotes.com", "podcastaddict.com"]):
-            review_links.others.append(href)
-    return review_links
+    return {
+        "analytics": analytics,
+        "program_info": program_info,
+        "hero": hero,
+        "head_tags": head_tags,
+        "episodes": episodes_data
+    }
 
 
 def parse_podcast_detail(html: str, url: str, flags: Optional[List[str]] = None) -> Podcast:
-    objects = extract_json_ld_objects(html)
-    schema = _find_podcast_schema(objects) or {}
+    soup = BeautifulSoup(html, "html.parser")
+    next_data = extract_nextjs_data(soup)
+    
+    title = None
+    description = None
+    image_url = None
+    episodes: List[Episode] = []
+    
+    if next_data:
+        extracted = get_program_data_from_nextjs(next_data, url)
+        if extracted:
+            hero = extracted["hero"]
+            head = extracted["head_tags"]
+            
+            # Title
+            if hero.get("title"):
+                title = clean_text(hero.get("title"))
+            elif head.get("title"):
+                title = clean_text(head.get("title"))
+            
+            # Description
+            if head.get("description"):
+                description = clean_text(head.get("description"))
+                
+            # Image
+            hero_image = hero.get("heroImagePrepared", {})
+            if hero_image.get("imgSrc"):
+                image_url = hero_image.get("imgSrc")
+            elif head.get("fullTouchIconPath"):
+                image_url = head.get("fullTouchIconPath")
+            
+            # Episodes
+            raw_eps = extracted.get("episodes", [])
+            for ep in raw_eps:
+                if ep.get("title"):
+                    episodes.append(Episode(
+                        title=clean_text(ep["title"]),
+                        description=clean_text(ep.get("description")),
+                        publishedAt=ep.get("publishedAt"), 
+                        duration=str(ep.get("duration")) if ep.get("duration") else None,
+                        url=ep.get("url")
+                    ))
 
-    title = clean_text(schema.get("name")) or clean_text(_extract_meta(html, "og:title")) or url
-    description = clean_text(schema.get("description")) or clean_text(_extract_meta(html, "og:description"))
-    language = clean_text(schema.get("inLanguage")) or clean_text(_extract_meta(html, "og:locale"))
-    genres = _normalise_list(schema.get("genre"))
-    host = _extract_host(schema)
-    target = _derive_target_audience(schema, description)
-    scenarios, reasons = _derive_recommendations(genres, description)
-    review_links = parse_review_links(html, url)
+    def get_meta(prop: str) -> Optional[str]:
+        tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
+        return tag["content"] if tag and tag.has_attr("content") else None
+
+    if not title:
+        title = clean_text(get_meta("og:title")) or clean_text(get_meta("twitter:title")) or url
+        
+    if not description:
+        description = clean_text(get_meta("og:description")) or clean_text(get_meta("twitter:description"))
+        
+    if not image_url:
+        image_url = get_meta("og:image") or get_meta("twitter:image")
+
+    host = None
+    if title and "Conversations with" in title:
+         parts = title.split("Conversations with")
+         if len(parts) > 1:
+             host = parts[1].split("-")[0].strip()
+
+    genres = []
+    review_links = parse_review_links(soup, url)
+    
+    if image_url and image_url.startswith("//"):
+        image_url = "https:" + image_url
+
     is_popular = any(flag.lower() == "popular" for flag in (flags or []))
     is_award_winning = any("award" in flag.lower() for flag in (flags or []))
 
@@ -277,32 +183,87 @@ def parse_podcast_detail(html: str, url: str, flags: Optional[List[str]] = None)
         host_information=host,
         description=description,
         genres=genres,
-        language=language,
-        target_audience=target,
-        recommendation_scenarios=scenarios,
-        recommendation_reasons=reasons,
         abc_podcast_page=url,
+        image_url=image_url,
         apple_podcast_page=review_links.apple,
         spotify_podcast_page=review_links.spotify,
         youtube_page=review_links.youtube,
         other_review_links=review_links.others,
+        episodes=episodes,
         is_popular=is_popular,
         is_award_winning=is_award_winning,
     )
     return podcast
 
 
-def _extract_meta(html: str, property_name: str) -> Optional[str]:
-    pattern = re.compile(
-        rf"<meta[^>]+property=\"{re.escape(property_name)}\"[^>]+content=\"(.*?)\"", re.IGNORECASE
-    )
-    match = pattern.search(html)
-    if match:
-        return match.group(1)
-    name_pattern = re.compile(
-        rf"<meta[^>]+name=\"{re.escape(property_name)}\"[^>]+content=\"(.*?)\"", re.IGNORECASE
-    )
-    match = name_pattern.search(html)
-    if match:
-        return match.group(1)
-    return None
+def parse_review_links(soup: BeautifulSoup, base_url: str) -> ReviewLinks:
+    review_links = ReviewLinks()
+    seen: set[str] = set()
+    
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag["href"]
+        try:
+            absolute = urljoin(base_url, href)
+        except Exception:
+            continue
+        
+        if absolute in seen:
+            continue
+        seen.add(absolute)
+        
+        lower_href = absolute.lower()
+        if "podcasts.apple.com" in lower_href:
+            review_links.apple = review_links.apple or absolute
+        elif "spotify.com" in lower_href:
+            review_links.spotify = review_links.spotify or absolute
+        elif "youtube.com" in lower_href or "youtu.be" in lower_href:
+            review_links.youtube = review_links.youtube or absolute
+        elif any(domain in lower_href for domain in ["podchaser.com", "listennotes.com", "podcastaddict.com"]):
+            review_links.others.append(absolute)
+            
+    return review_links
+
+
+def parse_episode_page(html: str) -> Dict[str, Optional[str]]:
+    """Extracts MP3 URL and Published Date from an episode page."""
+    soup = BeautifulSoup(html, "html.parser")
+    next_data = extract_nextjs_data(soup)
+    if not next_data:
+        return None
+        
+    found_audio = None
+    
+    # Recursive search for mp3/m4a in the props
+    def find_stream(obj):
+        nonlocal found_audio
+        if found_audio: return
+        
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if isinstance(v, str):
+                    if (v.endswith(".mp3") or v.endswith(".m4a")) and "mediacore" in v:
+                        found_audio = v
+                        return
+                elif isinstance(v, (dict, list)):
+                    find_stream(v)
+        elif isinstance(obj, list):
+            for item in obj:
+                find_stream(item)
+
+    # Optimization: Look in documentProps first as seen in debug
+    props = next_data.get("props", {}).get("pageProps", {})
+    doc_props = props.get("data", {}).get("documentProps", {})
+    
+    published_at = doc_props.get("publishedAt") or doc_props.get("firstPublishedAt") or doc_props.get("updatedAt")
+    if not published_at:
+        # Fallback to recursively searching for ISO date strings nearby
+        pass 
+        
+    if "renditions" in doc_props:
+        for r in doc_props["renditions"]:
+            if r.get("url") and r["url"].endswith(".mp3"):
+                return {"audio_url": r["url"], "published_at": published_at}
+    
+    # Fallback to deep search
+    find_stream(props)
+    return {"audio_url": found_audio, "published_at": published_at}
