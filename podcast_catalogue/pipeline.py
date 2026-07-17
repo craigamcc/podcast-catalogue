@@ -14,8 +14,10 @@ from typing import Dict, List, Optional, Any
 
 import aiohttp
 
-from .models import Podcast, Review, Vibe, TargetAudience, TranscriptSegment, Chapter, Highlight, EngagementIntelligence, GuestProfile
+from .models import Podcast, Review, Vibe, TargetAudience, TranscriptSegment, Chapter, Highlight, EngagementIntelligence, GuestProfile, ContentRisk, AIProvenance, SourceAnchor
 from .parser import parse_podcast_detail, parse_episode_page
+from .authority import get_authority_for_podcast
+from .entity_registry import apply_corrections
 from .transcriber import process_episode_transcription
 from .enricher import enrich_podcast_data, search_itunes_podcast
 from .ai_enricher import (
@@ -27,6 +29,8 @@ from .ai_enricher import (
     extract_highlights,
 )
 from .vector_store import get_db_client, get_collection, index_episode
+from .spotify_resolver import resolver as spotify_resolver
+from .youtube_enricher import youtube_enricher
 
 
 # ---------------------------------------------------------------------------
@@ -191,6 +195,25 @@ class ParseStage(Stage):
                     # Merge with existing data
                     existing = ctx.existing_podcasts.get(parsed_podcast.title)
                     if existing:
+                        # 1. Merge Show-Level Metadata
+                        parsed_podcast.itunes_id = existing.itunes_id or parsed_podcast.itunes_id
+                        parsed_podcast.average_rating = existing.average_rating or parsed_podcast.average_rating
+                        parsed_podcast.rating_count = existing.rating_count or parsed_podcast.rating_count
+                        parsed_podcast.primary_genre = existing.primary_genre or parsed_podcast.primary_genre
+                        parsed_podcast.apple_genres = existing.apple_genres or parsed_podcast.apple_genres
+                        parsed_podcast.reviews = existing.reviews or parsed_podcast.reviews
+                        parsed_podcast.narrative_hook = existing.narrative_hook or parsed_podcast.narrative_hook
+                        parsed_podcast.vibe = existing.vibe or parsed_podcast.vibe
+                        parsed_podcast.origin_location = existing.origin_location or parsed_podcast.origin_location
+                        parsed_podcast.geographic_coverage = existing.geographic_coverage or parsed_podcast.geographic_coverage
+                        parsed_podcast.scouting_priority = existing.scouting_priority or parsed_podcast.scouting_priority
+                        parsed_podcast.is_award_winning = existing.is_award_winning or parsed_podcast.is_award_winning
+                        parsed_podcast.recommendation_scenarios = existing.recommendation_scenarios or parsed_podcast.recommendation_scenarios
+                        parsed_podcast.target_audience = existing.target_audience or parsed_podcast.target_audience
+                        parsed_podcast.source_organization = existing.source_organization or parsed_podcast.source_organization
+                        parsed_podcast.authority_score = existing.authority_score or parsed_podcast.authority_score
+
+                        # 2. Merge Episode-Level Intelligence
                         # Keep existing episodes if they have transcripts/engagement
                         # and match the title of the newly parsed ones.
                         new_eps_map = {e.title: e for e in parsed_podcast.episodes}
@@ -205,13 +228,29 @@ class ParseStage(Stage):
                                 new_ep.guests = old_ep.guests or new_ep.guests
                                 new_ep.vibe = old_ep.vibe or new_ep.vibe
                                 new_ep.narrative_hook = old_ep.narrative_hook or new_ep.narrative_hook
+                                new_ep.entities = old_ep.entities or new_ep.entities
+                                new_ep.content_locations = old_ep.content_locations or new_ep.content_locations
+                                new_ep.timeline = old_ep.timeline or new_ep.timeline
+                                new_ep.highlights = old_ep.highlights or new_ep.highlights
                                 # Note: published_at is kept from newly parsed (since it's now fixed)
                         
+                    # Initialize authority if missing
+                    if not parsed_podcast.source_organization:
+                        org, score = get_authority_for_podcast(parsed_podcast.title)
+                        parsed_podcast.source_organization = org
+                        parsed_podcast.authority_score = score
+
+                    # Cascade to episodes
+                    for ep in parsed_podcast.episodes:
+                        ep.source_organization = parsed_podcast.source_organization
+                        ep.authority_score = parsed_podcast.authority_score
+
                     # Apply popularity tag
                     clean_link = url.rstrip("/")
                     if clean_link in ctx.popular_urls:
                         parsed_podcast.is_popular = True
-                        parsed_podcast.recommendation_reasons.append("Featured in ABC Most Listened")
+                        if "Featured in ABC Most Listened" not in parsed_podcast.recommendation_reasons:
+                            parsed_podcast.recommendation_reasons.append("Featured in ABC Most Listened")
                     return parsed_podcast
                 return None
 
@@ -343,40 +382,85 @@ class TranscribeStage(Stage):
         on_podcast_processed = kwargs.get("on_podcast_processed")
         config = ctx.config
 
+        # 1. Flatten the queue and calculate priority
+        pending_tasks = []
         for podcast in podcasts:
             for ep in podcast.episodes:
                 force_transcribe = config.force or config.stage == self.name
                 if not ep.audio_url or (ep.transcript and not force_transcribe):
                     continue  # Skip if no audio or already transcribed (unless forced)
 
-                print(f"  Transcribing: {ep.title[:40]}...")
-                try:
-                    transcript_text, segments = await process_episode_transcription(
-                        ep.audio_url, duration_limit=config.duration_limit
+                # Calculate Priority Score
+                score = 0
+                
+                # A. Authority Weight
+                auth_score = getattr(podcast, 'authority_score', 0) or 0
+                score += (auth_score * 50)
+                
+                # B. Entity & Guest Triggers
+                desc_lower = (ep.description or "").lower()
+                title_lower = (ep.title or "").lower()
+                if any(kw in desc_lower for kw in ["interview", "speaks with", "guest", "exclusive", "opinion"]):
+                    score += 15
+                
+                if "with " in title_lower or "on " in title_lower:
+                    score += 15
+                
+                # C. Timeliness Decay
+                if ep.published_at:
+                    try:
+                        from datetime import datetime, timezone
+                        dt_str = ep.published_at.replace("Z", "+00:00")
+                        pub_date = datetime.fromisoformat(dt_str)
+                        if pub_date.tzinfo is None:
+                            pub_date = pub_date.replace(tzinfo=timezone.utc)
+                        now = datetime.now(timezone.utc)
+                        delta = now - pub_date
+                        if delta.days <= 1:
+                            score += 20
+                        elif delta.days <= 7:
+                            score += 10
+                    except Exception:
+                        pass
+                
+                pending_tasks.append((score, podcast, ep))
+                
+        # 2. Sort by priority descending
+        pending_tasks.sort(key=lambda x: x[0], reverse=True)
+        
+        print(f"  📝 Transcribe: Queued {len(pending_tasks)} episodes by priority...")
+
+        # 3. Process the sorted queue
+        for score, podcast, ep in pending_tasks:
+            print(f"  Transcribing [Priority: {score:.1f}]: {ep.title[:50]}...")
+            try:
+                transcript_text, segments = await process_episode_transcription(
+                    ep.audio_url, duration_limit=config.duration_limit
+                )
+                ep.transcript = transcript_text
+
+                # Speaker identification
+                if segments and any(s.get("speaker") for s in segments if isinstance(s, dict)):
+                    print(f"    🗣 Identifying speakers...")
+                    speaker_map = await identify_speakers(
+                        ctx.session, segments, ep.title,
+                        ep.description or podcast.description or ""
                     )
-                    ep.transcript = transcript_text
+                    if speaker_map:
+                        print(f"       Map: {speaker_map}")
+                        for seg in segments:
+                            if isinstance(seg, dict) and seg.get("speaker"):
+                                s_label = seg["speaker"]
+                                if s_label in speaker_map:
+                                    seg["speaker"] = speaker_map[s_label]
 
-                    # Speaker identification
-                    if segments and any(s.get("speaker") for s in segments if isinstance(s, dict)):
-                        print(f"    🗣 Identifying speakers...")
-                        speaker_map = await identify_speakers(
-                            ctx.session, segments, ep.title,
-                            ep.description or podcast.description or ""
-                        )
-                        if speaker_map:
-                            print(f"       Map: {speaker_map}")
-                            for seg in segments:
-                                if isinstance(seg, dict) and seg.get("speaker"):
-                                    s_label = seg["speaker"]
-                                    if s_label in speaker_map:
-                                        seg["speaker"] = speaker_map[s_label]
+                ep.segments = [TranscriptSegment(**s) for s in segments]
+                print(f"    ✓ {len(transcript_text)} chars, {len(segments)} segments")
 
-                    ep.segments = [TranscriptSegment(**s) for s in segments]
-                    print(f"    ✓ {len(transcript_text)} chars, {len(segments)} segments")
+            except Exception as e:
+                print(f"    ✗ Failed: {e}")
 
-                except Exception as e:
-                    print(f"    ✗ Failed: {e}")
-
+            # Intermediate save per episode processed
             if on_podcast_processed:
                 on_podcast_processed(podcast)
 
@@ -437,15 +521,51 @@ class ScoutEnrichStage(Stage):
                 
                 # Deep Pass: Requires transcription (segments)
                 for ep in podcast.episodes:
-                    if ep.segments and not ep.engagement:
+                    if (ep.segments or ep.transcript) and not ep.engagement:
                         print(f"  🔍 6B-Scout: Deep Analysis for {ep.title[:40]}...")
                         # Map HighlightSchema/EngagementSchema to Pydantic models
-                        e_data = await analyze_episode_transcript(ctx.session, ep.segments, ep.title, ctx=ctx)
+                        e_data = await analyze_episode_transcript(ctx.session, ep.segments, ep.title, transcript=ep.transcript, ctx=ctx)
                         if isinstance(e_data, dict):
                             if e_data.get("highlights"):
                                 ep.highlights = [Highlight(**h) for h in e_data["highlights"]]
                             if e_data.get("engagement"):
                                 ep.engagement = EngagementIntelligence(**e_data["engagement"])
+                            
+                            # --- Spotify Deep-linking ---
+                            print(f"    🎵 Resolving Spotify URI: {ep.title[:30]}...")
+                            s_uri = await spotify_resolver.resolve_episode(ctx.session, podcast.title, ep.title)
+                            
+                            # --- Trust Layer Mapping ---
+                            if e_data.get("trust"):
+                                t = e_data["trust"]
+                                ep.genre = t.get("genre")
+                                ep.expires = t.get("expires")
+                                ep.content_reference_time = t.get("contentReferenceTime")
+                                if t.get("contentRisk"):
+                                    try:
+                                        ep.content_risk = ContentRisk(**t["contentRisk"])
+                                    except Exception as re:
+                                        print(f"    ⚠️ Risk parsing error: {re}")
+                            
+                            if e_data.get("ai_provenance"):
+                                try:
+                                    ep.ai_provenance = AIProvenance(**e_data["ai_provenance"])
+                                except Exception as pe:
+                                    print(f"    ⚠️ Provenance parsing error: {pe}")
+
+                            # Cascade Spotify URI to highlight anchors
+                            if s_uri:
+                                for hl in ep.highlights:
+                                    if hl.source_anchor:
+                                        hl.source_anchor.spotify_uri = s_uri
+                                        hl.source_anchor.spotify_deep_link = hl.source_anchor.get_deep_link()
+
+                            if e_data.get("guests"):
+                                # Avoid duplicating guests if they already exist from description
+                                existing_guest_names = {g.name.lower() for g in ep.guests}
+                                for g_data in e_data["guests"]:
+                                    if g_data.get("name") and g_data["name"].lower() not in existing_guest_names:
+                                        ep.guests.append(GuestProfile(**g_data))
                             
                             if not ep.chapters:
                                 from .ai_enricher import generate_chapters
@@ -460,6 +580,53 @@ class ScoutEnrichStage(Stage):
             except Exception as e:
                 print(f"    ❌ Scouting failure for {podcast.title[:30]}: {e}")
 
+        return podcasts
+
+
+
+# ---------------------------------------------------------------------------
+# Stage 6C: YouTubeEnrich — Cross-platform Telemetry & Human Benchmarks
+# ---------------------------------------------------------------------------
+
+class YouTubeEnrichStage(Stage):
+    name = "youtube-enrich"
+
+    async def process(self, podcasts: List[Podcast], ctx: PipelineContext, **kwargs) -> List[Podcast]:
+        """Enriches episodes with YouTube telemetry and social signals."""
+        print(f"  📺 YouTubeEnrich: Syncing cross-platform telemetry...")
+        for podcast in podcasts:
+            count = 0
+            for ep in podcast.episodes:
+                # Resolve video and telemetry
+                yt_data = await youtube_enricher.resolve_video(ctx.session, podcast.title, ep.title)
+                if yt_data:
+                    if not ep.engagement:
+                        ep.engagement = EngagementIntelligence()
+                    
+                    # Apply telemetry
+                    ep.engagement.youtube_views = yt_data.get("views")
+                    ep.engagement.youtube_likes = yt_data.get("likes")
+                    ep.engagement.youtube_url = yt_data.get("youtube_url")
+                    ep.engagement.youtube_comments_paused = yt_data.get("comments_paused", False)
+                    
+                    # Map Chapters as functional benchmarks (if not already chaptered)
+                    if not ep.chapters and yt_data.get("chapters"):
+                        print(f"    📖 Using YouTube AI Chapters for {ep.title[:30]}")
+                        for ch in yt_data["chapters"]:
+                            ep.chapters.append(Chapter(
+                                title=ch["title"],
+                                summary="YouTube AI Benchmark",
+                                startTime=float(ch["start"]),
+                                endTime=float(ch["end"])
+                            ))
+                    
+                    # Also map to rich timeline
+                    if yt_data.get("chapters"):
+                        ep.timeline.extend(youtube_enricher.map_chapters_to_timeline(yt_data["chapters"]))
+                    
+                    count += 1
+            if count > 0:
+                print(f"    ✓ {podcast.title[:30]}: enriched {count} episodes from YouTube.")
         return podcasts
 
 
@@ -508,6 +675,59 @@ class EpisodeEnrichStage(Stage):
             except Exception as e:
                 print(f"    ❌ Episode Enrich failure for {podcast.title[:30]}: {e}")
         return podcasts
+    
+
+
+# ---------------------------------------------------------------------------
+# Stage 7: Correction — Editorial Safety Net (Named Entity Verification)
+# ---------------------------------------------------------------------------
+
+class CorrectionStage(Stage):
+    name = "correction"
+
+    async def process(self, podcasts: List[Podcast], ctx: PipelineContext, **kwargs) -> List[Podcast]:
+        """Apply global entity corrections to all extracted intelligence."""
+        print(f"  🪄 Correction: Applying Named Entity Verification Registry...")
+        count = 0
+        for p in podcasts:
+            # 1. Show Level
+            p.title = apply_corrections(p.title)
+            p.description = apply_corrections(p.description)
+            
+            # 2. Episode Level
+            for ep in p.episodes:
+                ep.title = apply_corrections(ep.title)
+                ep.description = apply_corrections(ep.description)
+                ep.narrative_hook = apply_corrections(ep.narrative_hook)
+                
+                if ep.engagement:
+                    ep.engagement.takeaway = apply_corrections(ep.engagement.takeaway)
+                    ep.engagement.why_listen = apply_corrections(ep.engagement.why_listen)
+                    ep.engagement.social_post = apply_corrections(ep.engagement.social_post)
+                    ep.engagement.best_quotes = [apply_corrections(q) for q in ep.engagement.best_quotes]
+                    ep.engagement.key_statistics = [apply_corrections(s) for s in ep.engagement.key_statistics]
+                
+                for hl in ep.highlights:
+                    hl.title = apply_corrections(hl.title)
+                    hl.reason = apply_corrections(hl.reason)
+                    if hl.source_anchor:
+                        hl.source_anchor.transcript_text = apply_corrections(hl.source_anchor.transcript_text)
+                
+                for chapter in ep.chapters:
+                    chapter.title = apply_corrections(chapter.title)
+                
+                for item in ep.timeline:
+                    item.title = apply_corrections(item.title)
+                
+                for guest in ep.guests:
+                    guest.name = apply_corrections(guest.name)
+                    guest.expertise = apply_corrections(guest.expertise)
+                    guest.bio = apply_corrections(guest.bio)
+                
+                count += 1
+                
+        print(f"    ✓ Applied corrections to {len(podcasts)} shows and {count} episodes.")
+        return podcasts
 
 
 
@@ -539,6 +759,25 @@ class IndexStage(Stage):
 
 
 # ---------------------------------------------------------------------------
+# Stage 8: RegionalSynthesis — Master Pulse Synthesis (The Substrate Layer)
+# ---------------------------------------------------------------------------
+
+class RegionalSynthesisStage(Stage):
+    name = "regional-synthesis"
+
+    async def process(self, podcasts: List[Podcast], ctx: PipelineContext, **kwargs) -> List[Podcast]:
+        """Clusters enriched episodes by region and synthesizes master pulses."""
+        from .regional_pipeline import synthesize_regional_pulses
+        print(f"  🤖 Regional Synthesis: Aggregating master pulses...")
+        try:
+            # We run the synthesis logic which pulls from the universe.jsonl (persisted by previous stages)
+            await synthesize_regional_pulses()
+        except Exception as e:
+            print(f"    ❌ Regional synthesis failed: {e}")
+        return podcasts
+
+
+# ---------------------------------------------------------------------------
 # Pipeline runner
 # ---------------------------------------------------------------------------
 
@@ -552,11 +791,14 @@ ALL_STAGES = {
     "content-enrich": ContentEnrichStage,
     "episode-enrich": EpisodeEnrichStage,
     "scout-enrich": ScoutEnrichStage,
+    "youtube-enrich": YouTubeEnrichStage,
+    "correction": CorrectionStage,
     "index": IndexStage,
+    "regional-synthesis": RegionalSynthesisStage,
 }
 
 # Default execution order
-DEFAULT_STAGE_ORDER = ["discover", "parse", "enrich", "deep-crawl", "transcribe", "content-enrich", "episode-enrich", "scout-enrich", "index"]
+DEFAULT_STAGE_ORDER = ["discover", "parse", "enrich", "deep-crawl", "transcribe", "content-enrich", "episode-enrich", "scout-enrich", "index", "regional-synthesis"]
 
 
 class Pipeline:
@@ -615,8 +857,10 @@ def build_pipeline(config, stage_name: str = "all") -> Pipeline:
         stages.append(ScoutEnrichStage())
         stages.append(IndexStage())
 
-    # Legacy fallback
     if config.ai_enrich and not config.content_enrich:
         stages.append(ContentEnrichStage())
+
+    if config.regional_synthesis:
+        stages.append(RegionalSynthesisStage())
 
     return Pipeline(stages)

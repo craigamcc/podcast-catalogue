@@ -19,11 +19,25 @@ except ImportError:
     lancedb = None
     LANCEDB_AVAILABLE = False
 
+try:
+    import voyager
+    VOYAGER_AVAILABLE = True
+except ImportError:
+    voyager = None
+    VOYAGER_AVAILABLE = False
+
 OLLAMA_EMBED_URL = "http://localhost:11434/api/embed"
 EMBED_MODEL = "nomic-embed-text"
 
-# Persistent LanceDB storage next to data files
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/lancedb_store")
+# Persistent storage paths
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data")
+DB_PATH = os.path.join(DATA_DIR, "lancedb_store")
+VOYAGER_INDEX_PATH = os.path.join(DATA_DIR, "voyager_index.voy")
+VOYAGER_MAP_PATH = os.path.join(DATA_DIR, "voyager_map.json")
+
+# Shared state for Voyager index and ID mapping
+_voyager_index = None
+_voyager_map = []  # Index in list matches Voyager ID, value is LanceDB chunk_id
 
 
 def get_db_client():
@@ -44,6 +58,49 @@ def get_collection(db):
     else:
         # Schema will be inferred dynamically on first add
         return None
+
+
+def _load_voyager():
+    """Initializes or loads the Voyager index and ID map."""
+    global _voyager_index, _voyager_map
+    if not VOYAGER_AVAILABLE:
+        return None, []
+
+    if _voyager_index is not None:
+        return _voyager_index, _voyager_map
+
+    # Load mapping
+    if os.path.exists(VOYAGER_MAP_PATH):
+        try:
+            with open(VOYAGER_MAP_PATH, "r") as f:
+                _voyager_map = json.load(f)
+        except Exception as e:
+            print(f"    [ERR VOYAGER MAP] {e}")
+            _voyager_map = []
+    else:
+        _voyager_map = []
+
+    # Load or create index
+    # Note: nomic-embed-text is 768 dimensions
+    if os.path.exists(VOYAGER_INDEX_PATH):
+        try:
+            _voyager_index = voyager.Index.load(VOYAGER_INDEX_PATH)
+        except Exception as e:
+            print(f"    [ERR VOYAGER LOAD] {e}")
+            _voyager_index = voyager.Index(voyager.Space.Cosine, num_dimensions=768)
+    else:
+        _voyager_index = voyager.Index(voyager.Space.Cosine, num_dimensions=768)
+
+    return _voyager_index, _voyager_map
+
+
+def _save_voyager():
+    """Persists Voyager index and mapping to disk."""
+    if _voyager_index is not None:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        _voyager_index.save(VOYAGER_INDEX_PATH)
+        with open(VOYAGER_MAP_PATH, "w") as f:
+            json.dump(_voyager_map, f)
 
 
 async def embed_text(session: aiohttp.ClientSession, text: str) -> List[float]:
@@ -112,6 +169,13 @@ async def index_episode(
         if episode.get("narrativeHook"):
             text_parts.append(episode["narrativeHook"])
     
+    # Also index guest info if available
+    for guest in episode.get("guests", []):
+        if guest.get("name"):
+            text_parts.append(f"Guest: {guest['name']}")
+        if guest.get("bio"):
+            text_parts.append(guest["bio"])
+    
     full_text = " ".join(text_parts)
     if not full_text or len(full_text) < 20:
         return 0
@@ -144,6 +208,8 @@ async def index_episode(
             "episode_title": ep_title,
             "chunk_index": i,
             "audio_url": episode.get("audioUrl", ""),
+            "primary_genre": episode.get("primary_genre", ""),
+            "is_popular": bool(episode.get("is_popular", False)),
             "entities": json.dumps(episode.get("entities", []))
         }
         data_to_insert.append(row)
@@ -156,15 +222,58 @@ async def index_episode(
     else:
         t = db.open_table(table_name)
         t.add(data_to_insert)
+    
+    # Sync with Voyager
+    v_index, v_map = _load_voyager()
+    if v_index is not None:
+        import numpy as np
+        vectors = np.array([row["vector"] for row in data_to_insert], dtype=np.float32)
+        ids = [row["id"] for row in data_to_insert]
+        
+        # Voyager's add_items returns the first ID assigned
+        v_index.add_items(vectors)
+        v_map.extend(ids)
+        _save_voyager()
         
     return len(data_to_insert)
+
+
+async def sync_voyager():
+    """Rebuilds the Voyager index from the ground up using LanceDB data."""
+    if not LANCEDB_AVAILABLE or not VOYAGER_AVAILABLE:
+        return False
+    
+    db = get_db_client()
+    table = get_collection(db)
+    if table is None:
+        return False
+    
+    print("    [VOYAGER SYNC] Rebuilding index from LanceDB...")
+    all_data = table.to_pandas()
+    if all_data.empty:
+        return False
+        
+    global _voyager_index, _voyager_map
+    _voyager_index = voyager.Index(voyager.Space.Cosine, num_dimensions=768)
+    _voyager_map = []
+    
+    import numpy as np
+    vectors = np.array(all_data["vector"].tolist(), dtype=np.float32)
+    ids = all_data["id"].tolist()
+    
+    _voyager_index.add_items(vectors)
+    _voyager_map = ids
+    _save_voyager()
+    print(f"    [VOYAGER SYNC] Done. Indexed {len(ids)} chunks.")
+    return True
 
 
 async def semantic_search(
     session: aiohttp.ClientSession,
     table, # can be None, handled gracefully
     query: str,
-    top_k: int = 5
+    top_k: int = 5,
+    genre: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Semantic search across all indexed episodes.
@@ -184,7 +293,40 @@ async def semantic_search(
     if not query_embedding:
         return []
     
-    results = table.search(query_embedding).limit(top_k).to_list()
+    v_index, v_map = _load_voyager()
+    results = []
+    
+    # Try Voyager first
+    if v_index is not None and len(v_map) > 0:
+        import numpy as np
+        try:
+            indices, distances = v_index.query(np.array(query_embedding, dtype=np.float32), k=top_k)
+            # Fetch full metadata from LanceDB using mapped IDs
+            matched_ids = [v_map[idx] for idx in indices]
+            
+            # Efficiently query LanceDB for the specific IDs
+            # Note: LanceDB's `search` is for vectors. For metadata lookup, we use a filter or SQL.
+            id_list_str = ", ".join([f"'{i}'" for i in matched_ids])
+            rows = table.search(None).where(f"id IN ({id_list_str})").to_list()
+            
+            # Sort rows back into Voyager's ranking order and filter by genre if provided
+            row_map = {row["id"]: row for row in rows}
+            results = [row_map[mid] for mid in matched_ids if mid in row_map]
+            
+            if genre:
+                results = [r for r in results if genre.lower() in r.get("primary_genre", "").lower()]
+            
+            # Add distance info manually since we bypassed Lance's search
+            for i, row in enumerate(results):
+                row["_distance"] = float(distances[i])
+                
+        except Exception as e:
+            print(f"    [WARN VOYAGER SEARCH] {e}. Falling back to native search.")
+            v_index = None # Trigger fallback below
+            
+    # Fallback to native LanceDB search
+    if not results:
+        results = table.search(query_embedding).limit(top_k).to_list()
     
     matches = []
     for row in results:

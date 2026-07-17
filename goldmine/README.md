@@ -1,73 +1,31 @@
-# React + TypeScript + Vite
+# GoldMine Frontend Intelligence Hub
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The GoldMine frontend is a high-fidelity "Industrial-Noir" situational intelligence hub built with React and Vite. It consumes the `data.jsonl` Golden Record produced by the GoldMine AI extraction cluster and presents it through several advanced discovery vectors.
 
-Currently, two official plugins are available:
+## Key Screens & Architecture
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 1. The Scour Engine (Dashboard)
+The primary entry point that maps semantic vectors across the entire catalogue.
+![Dashboard Screenshot](./docs/screenshots/01_dashboard.png)
 
-## React Compiler
+### 2. Feed Pulse
+A real-time narrative flow featuring the latest provocations, takeaways, and hard data points extracted across the network.
+![Feed Pulse Screenshot](./docs/screenshots/02_feed_pulse.png)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 3. Semantic Search
+Deep-search across entities, exact transcript segments, and themes, instantly locating the exact moment a concept was discussed.
+![Semantic Search Screenshot](./docs/screenshots/03_semantic_search.png)
 
-## Expanding the ESLint configuration
+### 4. Atmosphere Scout
+Filter the network by narrative vibe (Tone), cognitive depth (Complexity), and conversational tempo (Pace).
+![Atmosphere Screenshot](./docs/screenshots/04_atmosphere.png)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 5. Extraction Studio
+Simulate the automated discovery pipeline, allowing users to find emotional peaks and orchestrate FFmpeg render graphs instantly.
+![Extraction Studio Screenshot](./docs/screenshots/05_studio.png)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Development
+```bash
+npm install
+npm run dev
 ```

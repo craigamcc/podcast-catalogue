@@ -159,12 +159,40 @@ def _transform_chapter(ch: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _transform_timeline_item(item: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform a Prism timeline item to Daisy's rich marker format."""
+    return {
+        "title": item.get("title", ""),
+        "type": item.get("type", "CHAPTER"),
+        "startTime": item.get("startTime") or item.get("start_time") or 0,
+        "endTime": item.get("endTime") or item.get("end_time") or 0,
+        "link": item.get("link"),
+        "metadata": item.get("metadata", {})
+    }
+
+
 def _transform_review(review: Dict[str, Any]) -> Dict[str, Any]:
     """Transform a Prism review to Daisy's review format."""
     return {
         "author": review.get("author", "Anonymous"),
         "rating": review.get("rating", 0),
         "content": review.get("content", ""),
+    }
+
+
+def _transform_highlight(hl: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform a Prism highlight to Daisy's Clip/Claim format."""
+    return {
+        "title": hl.get("title", ""),
+        "reason": hl.get("reason", ""),
+        "category": hl.get("category", "GENERAL"),
+        "startTime": hl.get("startTime") or hl.get("start_time") or 0,
+        "endTime": hl.get("endTime") or hl.get("end_time") or 0,
+        # Trust Layer
+        "claimStatus": hl.get("claimStatus") or hl.get("claim_status"),
+        "claimInterpreter": hl.get("claimInterpreter") or hl.get("claim_interpreter"),
+        "sourceAnchor": hl.get("sourceAnchor") or hl.get("source_anchor"),
+        "spotifyDeepLink": hl.get("sourceAnchor", {}).get("spotifyDeepLink") or hl.get("source_anchor", {}).get("spotify_deep_link"),
     }
 
 
@@ -184,7 +212,9 @@ def _build_entity_graph(podcast: Dict[str, Any]) -> List[str]:
 
 
 def transform_episode(ep: Dict[str, Any]) -> Dict[str, Any]:
-    """Transform a single Prism episode to the enhanced Daisy episode format."""
+    """
+    Transform a single Prism episode record into Daisy's consumption format.
+    """
     result = {
         "title": ep.get("title", "Untitled"),
         "description": ep.get("description") or ep.get("narrativeHook") or "",
@@ -196,6 +226,15 @@ def transform_episode(ep: Dict[str, Any]) -> Dict[str, Any]:
         "vibe": _normalize_vibe(ep.get("vibe")),
         "entities": ep.get("entities", []),
         "chapters": [_transform_chapter(ch) for ch in ep.get("chapters", [])],
+        "timeline": [_transform_timeline_item(item) for item in ep.get("timeline", [])],
+        "highlights": [_transform_highlight(hl) for hl in ep.get("highlights", [])],
+        
+        # Editorial Trust Layer (schema.org names)
+        "genre": ep.get("genre"),
+        "contentRating": ep.get("contentRisk") or ep.get("content_risk"),
+        "claimInterpreter": ep.get("aiProvenance") or ep.get("ai_provenance"),
+        "expires": ep.get("expires"),
+        "contentReferenceTime": ep.get("contentReferenceTime") or ep.get("content_reference_time"),
     }
     return result
 
@@ -224,10 +263,10 @@ def transform_podcast(podcast: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "id": _slugify(title),
         "title": title,
-        "publisher": _infer_publisher(podcast),
+        "publisher": podcast.get("sourceOrganization") or podcast.get("source_organization") or _infer_publisher(podcast),
         "hostInformation": podcast.get("hostInformation") or None,
         "description": podcast.get("description") or "",
-        "genre": podcast.get("primaryGenre") or (podcast.get("appleGenres") or [None])[0],
+        "genre": podcast.get("genre") or podcast.get("primaryGenre") or (podcast.get("appleGenres") or [None])[0],
         "language": podcast.get("language") or "English",
 
         "narrativeHook": podcast.get("narrativeHook") or "",
@@ -251,6 +290,11 @@ def transform_podcast(podcast: Dict[str, Any]) -> Dict[str, Any]:
         "frequency": _estimate_frequency(episodes),
         "episodeLength": _estimate_episode_length(episodes),
         "isPopular": podcast.get("isPopular", False),
+
+        # Editorial Trust Layer
+        "license": podcast.get("license"),
+        "licenseUrl": podcast.get("licenseUrl") or podcast.get("license_url"),
+        "sourceOrganization": podcast.get("sourceOrganization") or podcast.get("source_organization"),
 
         # Enhanced fields for discussion show & live chat
         "reviews": [_transform_review(r) for r in podcast.get("reviews", [])],

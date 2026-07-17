@@ -24,7 +24,7 @@ class DJTriageService:
                     except Exception as e:
                         print(f"⚠️ Error loading podcast: {e}")
 
-    async def curate_session(self, prompt: Optional[str] = None, limit: int = 5) -> Dict[str, Any]:
+    async def curate_session(self, prompt: Optional[str] = None, mode: str = "DEFAULT", limit: int = 5) -> Dict[str, Any]:
         """
         The 'Brain' of the AI DJ.
         Assembles a sequence of snips based on user goals/prompts.
@@ -38,6 +38,9 @@ class DJTriageService:
                 # Prioritize enriched episodes
                 if ep.highlights:
                     for h in ep.highlights:
+                        if mode == "WATERCOOLER" and h.category not in ("STAT", "QUOTE"):
+                            continue
+                            
                         # Priority Weighting: PEAK = 1.0, QUOTE = 0.9, STAT = 0.8, GENERAL = 0.5
                         weight = 0.5
                         if h.category == "PEAK": weight = 1.0
@@ -73,6 +76,8 @@ class DJTriageService:
             ep = cand["episode"]
             h = cand["highlight"]
             
+            origin = p.origin or p.source_organization or "an unspecified source"
+            
             snip = {
                 "id": f"snip-{ep.title}-{h.start_time}",
                 "episodeTitle": ep.title,
@@ -81,6 +86,7 @@ class DJTriageService:
                 "startTime": h.start_time,
                 "endTime": h.end_time,
                 "rationale": h.reason,
+                "provenanceWatermark": f"According to {origin}...",
                 "confidenceByGoal": { "Relevance": 0.95 }
             }
             

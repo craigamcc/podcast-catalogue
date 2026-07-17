@@ -69,6 +69,7 @@ export interface Podcast {
     vibe?: Vibe;
     averageRating?: number;
     primaryGenre?: string;
+    applePodcastPage?: string;
 }
 
 // Normalized Data Structure for the UI

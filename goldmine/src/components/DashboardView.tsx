@@ -16,7 +16,7 @@ export const DashboardView = ({ episodes }: DashboardProps) => {
         if (selectedPersona === 'all') return episodes.slice(0, 5);
 
         return episodes.filter(ep => {
-            const tone = ep.vibe?.tone?.toLowerCase() || '';
+            const tone = ep.vibe?.tone?.join(' ').toLowerCase() || '';
             const entities = (ep.entities || []).join(' ').toLowerCase();
 
             switch (selectedPersona) {
@@ -65,7 +65,7 @@ export const DashboardView = ({ episodes }: DashboardProps) => {
             <div style={{ textAlign: 'center', marginBottom: '80px', marginTop: '40px' }}>
                 <h1 className="text-display-hero" style={{ marginBottom: '16px' }}>The Scour Engine.</h1>
                 <p className="text-subheadline" style={{ maxWidth: '600px', margin: '0 auto' }}>
-                    Simulating how Prism vectors semantic dimensions to power hyper-personalized client agents.
+                    Mapping how GoldMine vectors semantic dimensions to power hyper-personalized client agents.
                 </p>
             </div>
 
@@ -101,7 +101,7 @@ export const DashboardView = ({ episodes }: DashboardProps) => {
 
                 {isScouring ? (
                     <div style={{ height: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ fontSize: '24px', color: 'var(--text-secondary)', animation: 'pulse 1.5s infinite' }}>Prism is mapping semantic vectors...</div>
+                        <div style={{ fontSize: '24px', color: 'var(--text-secondary)', animation: 'pulse 1.5s infinite' }}>GoldMine is mapping semantic vectors...</div>
                     </div>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -116,11 +116,11 @@ export const DashboardView = ({ episodes }: DashboardProps) => {
 
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                            {ep.vibe && (
-                                                <span style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', fontSize: '13px', fontWeight: 500 }}>
-                                                    {ep.vibe.tone}
+                                            {ep.vibe && ep.vibe.tone && ep.vibe.tone.map(t => (
+                                                <span key={t} style={{ padding: '4px 12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', fontSize: '13px', fontWeight: 500 }}>
+                                                    {t}
                                                 </span>
-                                            )}
+                                            ))}
                                             {ep.entities && ep.entities.slice(0, 3).map((ent, i) => (
                                                 <span key={i} style={{ padding: '4px 12px', background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
                                                     {ent}

@@ -53,9 +53,14 @@ GoldMine is designed to be **Headless**.
 
 ## 🚀 Future Roadmap
 
-### Q2 2026: Multimodal Indexing
+### Q2 2026: Multimodal & Audio Intelligence Indexing
 - Ingestion of video assets from DAM systems.
 - Multimodal transcription and visual concept mapping.
+- Integration of **Gemini Audio API** (`gemini-3-flash-preview`) for advanced, zero-shot audio understanding:
+  - **Simultaneous Processing**: Transcribe, translate, and summarize audio in a single pass.
+  - **Structured Audio Intelligence**: Extract accurate segment-level timestamps (MM:SS) paired with semantic content.
+  - **Emotion Detection**: Identify primary emotions (Happy, Sad, Angry, Neutral) per segment to enrich the "Vibe" graph.
+  - **Large File Handling**: Utilize the Gemini Files API for robust >20MB audio processing.
 
 ### Q3 2026: Automated Assembly
 - Launch of the `Remix` API for generating synthetic bonus content and audio/video briefs.

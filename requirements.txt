@@ -7,3 +7,4 @@ torchaudio
 ollama
 pyannote.audio>=3.1
 lancedb
+voyager

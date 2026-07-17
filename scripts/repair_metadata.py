@@ -72,4 +72,4 @@ def repair_podcasts(limit: int = 50):
     print(f"Saved to: {OUTPUT_PATH}")
 
 if __name__ == "__main__":
-    repair_podcasts(limit=50)
+    repair_podcasts(limit=1000)

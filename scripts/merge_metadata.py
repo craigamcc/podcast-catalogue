@@ -10,33 +10,35 @@ def merge_metadata():
         print("Enriched metadata not found.")
         return
 
-    # Load the repaired feeds
-    repaired_feeds = {}
+    # Load the repaired feeds and all metadata
+    enriched_data = {}
     with open(ENRICHED_METADATA_FILE, "r") as f:
         for line in f:
             data = json.loads(line)
             title = data.get("title")
-            feed_url = data.get("feed_url")
-            if title and feed_url:
-                repaired_feeds[title.lower()] = feed_url
+            if title:
+                enriched_data[title.lower()] = data
 
-    print(f"Loaded {len(repaired_feeds)} repaired feeds.")
+    print(f"Loaded {len(enriched_data)} enriched shows from iTunes/ABC pulse.")
 
     # Merge into the intelligence file
     count = 0
     with open(INTELLIGENCE_FILE, "r") as f_in, open(TEMP_FILE, "w") as f_out:
         for line in f_in:
             data = json.loads(line)
-            title = data.get("title")
-            if title and title.lower() in repaired_feeds:
-                # Update the feed URL
-                data["rss_url"] = repaired_feeds[title.lower()]
+            title = data.get("title", "")
+            if title.lower() in enriched_data:
+                # Merge ALL top-level fields (genres, ratings, feeds, etc.)
+                extra = enriched_data[title.lower()]
+                for k, v in extra.items():
+                    if k != "episodes": # Don't overwrite existing rich episodes
+                        data[k] = v
                 count += 1
             f_out.write(json.dumps(data) + "\n")
 
     # Swap files
     os.replace(TEMP_FILE, INTELLIGENCE_FILE)
-    print(f"Successfully merged {count} feed URLs into {INTELLIGENCE_FILE}.")
+    print(f"Successfully performed deep merge for {count} shows into {INTELLIGENCE_FILE}.")
 
 if __name__ == "__main__":
     merge_metadata()

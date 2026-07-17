@@ -31,7 +31,7 @@ export const ExtractionView = ({ episodes }: { episodes: NormalizedEpisode[] }) 
             <div style={{ width: '100%', maxWidth: '1000px', margin: '40px 0' }}>
                 <h2 className="text-display-large" style={{ marginBottom: '16px' }}>Extraction Studio.</h2>
                 <p className="text-subheadline" style={{ maxWidth: '600px' }}>
-                    Simulate the automated discovery pipeline. Find emotional peaks and orchestrate FFmpeg render graphs instantly.
+                    Run the automated discovery pipeline. Find emotional peaks and orchestrate FFmpeg render graphs instantly.
                 </p>
             </div>
 

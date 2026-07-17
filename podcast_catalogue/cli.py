@@ -10,6 +10,7 @@ import re
 from .catalogue import CatalogueBuilder, CatalogueConfig
 from .exporter import export_universal_json, export_jsonl, export_jsonld, export_tiered_json
 from .reporter_adapter import generate_editorial_report
+from .vector_store import sync_voyager
 
 # Default URLs
 ABC_SITEMAP_URL = "https://www.abc.net.au/sitemaps/sitemap-listen-0.xml.gz"
@@ -44,9 +45,18 @@ def run_env_check():
     print("="*40)
 
 async def main_async(args):
-    if not args.output:
+    if not args.output and not args.sync_voyager:
         print("❌ Error: --output is required")
         return
+
+    if args.sync_voyager:
+        success = await sync_voyager()
+        if success:
+            print("✅ Voyager index successfully rebuilt from LanceDB.")
+        else:
+            print("❌ Voyager sync failed. Check if LanceDB has data.")
+        if not args.output:
+            return
 
     # Extract arguments for clarity and potential modification
     sitemap_url = args.sitemap_url
@@ -162,12 +172,13 @@ def main():
     parser.add_argument("--episode-enrich", action="store_true", help="Enable 6C Episode Enrichment (Guests, entities, vibe from descriptions)")
     parser.add_argument("--duration-limit", type=int, default=0, help="Limit transcription to N seconds of audio (0 = full episode)")
     parser.add_argument("--stage", default="all",
-        choices=["all", "discover", "parse", "enrich", "deep-crawl", "transcribe", "content-enrich", "episode-enrich", "scout-enrich", "index"],
+        choices=["all", "discover", "parse", "enrich", "deep-crawl", "transcribe", "content-enrich", "episode-enrich", "scout-enrich", "youtube-enrich", "correction", "index", "regional-synthesis"],
         help="Run only a specific pipeline stage (requires --input for most stages)")
     parser.add_argument("--force", action="store_true", help="Force re-running of stages even if data already exists")
     parser.add_argument("--provider", default="ollama", choices=["ollama", "gemini"], help="AI Provider (ollama or gemini)")
     parser.add_argument("--model", default=None, help="Explicit model name (e.g. qwen3.5:latest, gemini-1.5-flash)")
     parser.add_argument("--tier", type=int, default=2, choices=[0, 1, 2], help="Data Tier for JSON export (0=Slim, 1=Intelligence, 2=Full)")
+    parser.add_argument("--sync-voyager", action="store_true", help="Rebuild the Voyager index from the current LanceDB state")
     
     args = parser.parse_args()
 

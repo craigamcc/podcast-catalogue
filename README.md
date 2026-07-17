@@ -16,68 +16,39 @@ GoldMine is a high-performance, autonomous intelligence engine that transforms u
 
 ---
 
-## 🛠 Hardened v6.15 Features
+## 🛠 Hardened v6.20 Features
 
-1.  **Gold Run Pipeline**: A multi-stage intelligence pass (Download -> Transcribe -> Scout) designed for high-fidelity extraction.
-2.  **Merge-on-Write Safety**: Filtered scouting passes now merge results into the existing catalogue instead of truncating it, protecting the 451-show foundation.
-3.  **The Engagement Layer (v5.9)**: Moves beyond simple summarization to extract **Takeaways**, **Key Statistics**, **Verbatim Quotes**, and **Audiogram Blueprints**.
-4.  **Stage-Only Execution**: Ability to run specific parts of the pipeline (e.g., `--stage scout-enrich`) to refine intelligence on existing data.
-
----
-
-## 📦 Data Model: `podcasts_450_full_intelligence.jsonl`
-The canonical "Golden Record" contains fully hydrated `Podcast` objects with:
-- **Narrative Hooks & Vibes** (Tone, Complexity, Pace)
-- **Semantic Chapters** (with auto-generated summaries)
-- **Engagement Layer**: Verbatim quotes, stats, andProvocative social posts.
-- **Audio Context**: Digitally extracted transcripts with timestamped segments.
+1.  **Show-Level Vibe Aggregation**: Automatically computes "Atmosphere" (Tones) and "Complexity" (Technical Depth) at the show level, enabling mood-based catalogue browsing.
+2.  **Topic Coverage Bridge**: A semantic fallback system that redirects failed keyword searches to relevant high-coverage ABC categories (e.g., "AUKUS" -> "Defense & Politics").
+3.  **Guest Entity Graph**: Advanced co-occurrence analysis to find expert collaborators and panelists across the network.
+4.  **Persona-Driven Discovery**: Built-in logic to match content to specific user types (Deep Divers, Substance Seekers, Commute Optimizers).
+5.  **Engagement Layer (v5.9)**: Extraction of **Takeaways**, **Key Statistics**, **Verbatim Quotes**, and **Audiogram Blueprints**.
 
 ---
 
-## 🎮 Operations
+## 📡 The Agentic Bridge (MCP)
 
-### ⛏️ The "Gold Run" (Full Strike)
-Execute the complete end-to-end cycle for the entire network.
-```bash
-python3 -m podcast_catalogue.cli --input data/goldmine_alpha.jsonl --output data/goldmine_alpha.jsonl --deep-crawl --transcribe --scout-enrich --provider gemini --force
-```
+GoldMine is a first-class **Model Context Protocol (MCP)** server. It provides agents (like Claude) with high-fidelity media intelligence tools:
 
-### 🎯 The "Flagship Scout" (Filtered)
-Target specific high-value shows without clobbering the foundation.
-```bash
-python3 -m podcast_catalogue.cli --input data/goldmine_alpha.jsonl --stage scout-enrich --filter "Conversations|Mind|Health" --force
-```
-
-### 📡 Start the Intelligence Bridge (Port 8000)
-```bash
-python3 -m podcast_catalogue.server
-```
-
----
-
-## 🎯 Strategic Use Cases
-
-GoldMine is designed to serve as the "Neural Backbone" for media organizations, enabling:
-
-1.  **Agentic Access & Discovery**: Agents can search spoken content, auto-generate summaries, and create "related listening" bundles tied to breaking news.
-2.  **Generative Augmentation**: Automated assembly of "Bonus Segments" or briefings by remixing the existing catalogue.
-3.  **Production Monitoring**: Real-time monitoring of new episodes to auto-produce show notes, social assets, and SEO metadata.
-4.  **Living Knowledge Base**: A structured, semantic repository that agents can remix and repurpose at scale without manual effort.
-5.  **Video as First-Class Data**: Querying via DAM metadata and transcripts to generate clip reels and video briefs.
-6.  **Content Creation Flywheel**: Instantly surfacing B-roll and suggesting edits for promo versions tailored to different audiences.
-7.  **Headless Unlock**: An API-first surface (FastAPI + MCP) that agents can call directly for any media intelligence task.
-8.  **Dynamic Live Blog Enrichment**: Auto-enriching live blogs with fresh clips, archive context, and fact-checks.
-9.  **Human-in-the-Loop Scrutiny**: "Machine-speed" grunt work that flags discrepancies for editors, ensuring high-fidelity reporting with less manual overhead.
-10. **Personalization at Scale**: Automated generation of audience-specific versions (e.g., simplified for younger viewers or localized for different regions) without additional staff.
+- `search_catalogue`: Global search with topic expansion and coverage bridge.
+- `find_podcast_by_vibe`: Mood and technical depth discovery.
+- `get_guest_co_occurrences`: Mapping expert relationships.
+- `recommend_episodes`: Multi-persona recommendation engine with complexity filtering.
+- `get_catalogue_context`: The "Agentic Playbook" for persona-matching strategy.
 
 ---
 
 ## 🗺 Roadmap
 
 - [x] **Phase 1: Hardening** - Multi-stage pipeline, engagement layer, and semantic search.
-- [ ] **Phase 2: Multimodal Expansion** - Integration of Video/DAM data and multimodal reasoning (Gemini 1.5 Pro).
-- [ ] **Phase 3: Generative Assembly** - Automated "Remix" service for creating new media assets from the catalogue.
-- [ ] **Phase 4: Global Agentic Bridge** - Full MCP standardization for seamless integration into any AI ecosystem.
+- [x] **Phase 2: Global Agentic Bridge** - Full MCP standardization and persona-driven discovery intelligence.
+- [ ] **Phase 3: Multimodal Expansion** - Integration of Video/DAM data and zero-shot audio understanding via Gemini Audio API.
+- [ ] **Phase 4: Generative Assembly** - Automated "Remix" service for creating new media assets from the catalogue.
+
+## 🖥 Frontend Intelligence Hub
+
+The GoldMine system includes a high-fidelity React frontend designed with the "Industrial-Noir" aesthetic. It visualizes the semantic graphs, atmosphere vibes, and real-time feed pulses.
+👉 **[View UI Screenshots & Documentation](goldmine/README.md)**
 
 ---
 

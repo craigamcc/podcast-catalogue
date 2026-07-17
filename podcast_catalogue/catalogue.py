@@ -41,6 +41,7 @@ class CatalogueConfig:
     force: bool = False
     provider: str = "ollama"
     model: Optional[str] = None
+    regional_synthesis: bool = True # Enabled by default for all regional users
 
 
 class CatalogueBuilder:

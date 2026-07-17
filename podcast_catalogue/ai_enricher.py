@@ -5,7 +5,7 @@ import re
 from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from .models import TranscriptSegment
+from .models import TranscriptSegment, ClaimStatus, AIProvenance, SourceAnchor, ContentRisk, HighlightCategory
 
 load_dotenv()
 
@@ -25,6 +25,29 @@ def extract_json_from_text(text: str) -> Optional[Dict]:
         except (json.JSONDecodeError, AttributeError):
             pass
     return None
+
+def clean_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively removes 'additionalProperties' which is not supported by Gemini."""
+    if not isinstance(schema, dict):
+        return schema
+    
+    # Remove additionalProperties if it exists
+    schema.pop("additionalProperties", None)
+    
+    # Recurse through properties, items, and definitions
+    if "properties" in schema:
+        for k, v in schema["properties"].items():
+            schema["properties"][k] = clean_schema(v)
+    if "items" in schema:
+        schema["items"] = clean_schema(schema["items"])
+    if "$defs" in schema:
+        for k, v in schema["$defs"].items():
+            schema["$defs"][k] = clean_schema(v)
+    if "definitions" in schema:
+        for k, v in schema["definitions"].items():
+            schema["definitions"][k] = clean_schema(v)
+            
+    return schema
 
 # --- Models & Schemas ---
 
@@ -63,6 +86,11 @@ class PodcastAnalysisSchema(BaseModel):
     originLocation: Optional[LocationSchema] = None
     geographicCoverage: List[LocationSchema] = []
 
+class ContentRiskSchema(BaseModel):
+    level: str = "low"
+    categories: List[str] = []
+    requiresHumanReview: bool = False
+
 class EpisodeAnalysisSchema(BaseModel):
     narrative_hook: str
     vibe: VibeSchema
@@ -70,6 +98,11 @@ class EpisodeAnalysisSchema(BaseModel):
     entities: List[str]
     contentLocations: List[LocationSchema] = []
     guests: List[GuestSchema] = []
+    # Trust Layer
+    genre: Optional[str] = None
+    contentRisk: Optional[ContentRiskSchema] = None
+    expires: Optional[str] = None
+    contentReferenceTime: Optional[str] = None
 
 class ChapterSchema(BaseModel):
     title: str
@@ -100,9 +133,20 @@ class ChapterSchema(BaseModel):
 class HighlightSchema(BaseModel):
     title: str
     reason: str
-    category: str  # QUOTE, STAT, PEAK, INSIGHT, GENERAL
+    category: str  # QUOTE, STAT, PEAK, INSIGHT, ADVICE, ANECDOTE, GENERAL
     startTime: float
     endTime: float
+    # Trust Layer
+    claimStatus: Optional[str] = "unverified" # confirmed, alleged, forecast, attributed, unverified
+    claimInterpreter: Optional[str] = None
+
+class TimelineItemSchema(BaseModel):
+    title: str
+    type: str  # CHAPTER, EXPERT, SHOW_LINK, IMAGE
+    startTime: float
+    endTime: float
+    link: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class EngagementSchema(BaseModel):
     model_config = {"populate_by_name": True}
@@ -120,42 +164,114 @@ class AIEngine:
     async def analyze_episode(self, description: str, title: str) -> Optional[Dict[str, Any]]: pass
     async def generate_chapters(self, transcript_text: str, title: str) -> List[Dict[str, Any]]: pass
     async def extract_highlights(self, transcript_text: str, title: str) -> List[Dict[str, Any]]: pass
+    async def generate_deep_context_timeline(self, transcript_text: str, title: str) -> List[Dict[str, Any]]: pass
+    async def generate_regional_master_pulse(self, region_id: str, episodes_data: List[Dict[str, Any]], previous_pulse: Optional[Dict] = None) -> Optional[Dict]: pass
 
-    async def analyze_episode_transcript(self, segments: List[TranscriptSegment], title: str) -> Optional[Dict]:
+    async def analyze_episode_transcript(self, segments: List[TranscriptSegment], title: str, transcript: Optional[str] = None) -> Optional[Dict]:
         """Deep analysis of full transcript for engagement deliverables."""
         # Bundle segments into text chunks
-        transcript_text = "\n".join([f"[{s.speaker or '??'}] {s.text}" for s in segments])
+        if segments:
+            transcript_text = "\n".join([f"[{s.speaker or '??'}] {s.text}" for s in segments])
+        else:
+            transcript_text = transcript or ""
         
-        prompt = f"""You are GoldMine, a High-Intensity Content Scout. 
+        if not transcript_text:
+            return None
+        
+        prompt = f"""You are GoldMine, a High-Intensity Content Scout and Editorial Trust Proxy. 
 Analyze the full transcript for the episode: '{title}'
 
 Transcript Excerpt:
 {transcript_text[:12000]}
 
-Your task is to extract the 'Engagement Layer'—the high-value signals that drive discovery.
+Your task is to extract the 'Engagement Layer' and 'Editorial Trust Layer'—ensuring provenance and accuracy.
 Return a structured JSON object with these EXACT fields:
 
 1. 'highlights': A list of objects containing:
    - 'title': A punchy title for the moment.
-   - 'reason': Why this moment is significant.
-   - 'category': One of ["PEAK", "QUOTE", "STAT", "INSIGHT"].
-   - 'startTime' / 'endTime': The exact float timestamps for the moment.
-2. 'engagement': An object containing:
+   - 'category': One of ["QUOTE", "STAT", "PEAK", "INSIGHT", "ADVICE", "ANECDOTE"].
+        - 'QUOTE': Verbatim statement.
+        - 'STAT': Data/numbers.
+        - 'PEAK': Narrative/emotional climax.
+        - 'INSIGHT': Conceptual lesson.
+        - 'ADVICE': Practical guidance/actionable recommendation.
+        - 'ANECDOTE': Personal story or illustrative incident.
+   - 'claimStatus': Epistemic classification: 
+        - 'confirmed' (fact from authority)
+        - 'alleged' (attributed claim)
+        - 'forecast' (future prediction)
+        - 'attributed' (sourced opinion)
+        - 'unverified' (default)
+
+2. 'timeline': A list of 'Deep Context' markers:
+   - 'title': Descriptive title (e.g., 'Expert Mention: Mark Hammond').
+   - 'type': One of ["EXPERT", "SHOW_LINK", "IMAGE", "FACT_CHECK"].
+   - 'startTime' / 'endTime': Precise timestamps.
+   - 'link': Optional URL for deep linking.
+   - 'metadata': dict with 'bio', 'context', or 'source'.
+
+3. 'engagement': An object containing:
    - 'takeaway': The #1 counter-intuitive or essential lesson (Max 25 words).
-   - 'keyStatistics': A list of notable data points (numbers, dates, or percentages).
-   - 'bestQuotes': A list of verbatim, speaker-attributed excerpts (e.g., "[Name]: '...'").
-   - 'whyListen': A compelling 'Industrial-Noir' style value proposition.
-   - 'socialPost': A provocative social media draft designed for the Connect PRISM feed.
-   - 'audiogramCaptions': A list of objects {{"text": str, "start": float, "end": float}} for the TOP highlight.
+   - 'keyStatistics': notable data points.
+   - 'bestQuotes': verbatim, speaker-attributed excerpts.
+   - 'whyListen': compelling 'Industrial-Noir' style value proposition.
+   - 'socialPost': provocative social media draft.
+   - 'audiogramCaptions': list of {{"text": str, "start": float, "end": float}} for the TOP highlight.
+
+4. 'guests': list of formal interviewees (name, expertise, bio).
+
+5. 'trust': An object containing:
+   - 'genre': schema.org genre (e.g., 'news_bulletin', 'interview', 'panel_discussion', 'investigative').
+   - 'contentRisk': {{"level": "low/medium/high", "categories": ["court", "crime", "health", "named_individual", "emergency"], "requiresHumanReview": bool}}.
+   - 'expires': ISO datetime when this information becomes stale (e.g., road closures expire in hours, policy in weeks).
+   - 'contentReferenceTime': ISO datetime for the specific events discussed.
 
 Return ONLY valid JSON.
 """
         
         class DeepEngagementResp(BaseModel):
             highlights: List[HighlightSchema]
+            timeline: List[TimelineItemSchema] = Field(default_factory=list)
             engagement: EngagementSchema
+            guests: List[GuestSchema] = Field(default_factory=list)
+            trust: Optional[Dict[str, Any]] = None # {genre, contentRisk, expires, contentReferenceTime}
             
-        return await self._generate(prompt, DeepEngagementResp)
+        res = await self._generate(prompt, DeepEngagementResp)
+        
+        # --- Post-Processor: Trust Wiring & Source Anchoring ---
+        if isinstance(res, dict):
+            # 1. AI Provenance
+            from datetime import datetime
+            res["ai_provenance"] = {
+                "modelName": self.model,
+                "generatedAt": datetime.utcnow().isoformat() + "Z"
+            }
+            
+            # 2. Verbatim Source Anchors
+            if segments and res.get("highlights"):
+                for hl in res["highlights"]:
+                    start, end = hl.get("startTime", 0), hl.get("endTime", 0)
+                    # Find all segments that overlap with this highlight
+                    matching_text = []
+                    for s in segments:
+                        s_start = getattr(s, "start", 0) if not isinstance(s, dict) else s.get("start", 0)
+                        s_end = getattr(s, "end", 0) if not isinstance(s, dict) else s.get("end", 0)
+                        s_text = getattr(s, "text", "") if not isinstance(s, dict) else s.get("text", "")
+                        
+                        if (s_start >= start and s_start < end) or (s_end > start and s_end <= end) or (s_start <= start and s_end >= end):
+                            matching_text.append(s_text)
+                    
+                    if matching_text:
+                        hl["sourceAnchor"] = {
+                            "transcriptText": " ".join(matching_text).strip(),
+                            "timestampStart": start,
+                            "timestampEnd": end
+                        }
+                    
+                    # Set claimInterpreter
+                    hl["claimInterpreter"] = self.model
+            
+        return res
 
 # --- Gemini Provider (Cloud) ---
 
@@ -175,11 +291,16 @@ class GeminiEngine(AIEngine):
     async def _generate(self, prompt: str, schema: type[BaseModel]) -> Optional[Dict]:
         from google.genai import types
         try:
+            # Enforce strict schema by stripping additionalProperties (Gemini constraint)
+            raw_schema = schema.model_json_schema()
+            cleaned_schema = clean_schema(raw_schema)
+            
             response = await self.client.aio.models.generate_content(
                 model=self.model,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
+                    response_schema=cleaned_schema,
                     temperature=0.3
                 )
             )
@@ -208,19 +329,109 @@ class GeminiEngine(AIEngine):
         res = await self._generate(prompt, HighlightsResp)
         return res.get("highlights", []) if isinstance(res, dict) else []
 
+    async def generate_deep_context_timeline(self, transcript_text: str, title: str) -> List[Dict]:
+        prompt = f"Extract rich Deep Context markers (experts, shows, images) for {title}:\n{transcript_text}"
+        class TimelineResp(BaseModel): timeline: List[TimelineItemSchema]
+        res = await self._generate(prompt, TimelineResp)
+        return res.get("timeline", []) if isinstance(res, dict) else []
+
+    async def generate_regional_master_pulse(self, region_id: str, episodes_data: List[Dict[str, Any]], previous_pulse: Optional[Dict] = None) -> Optional[Dict]:
+        context_blocks = []
+        for ep in episodes_data:
+            experts_str = ", ".join(ep.get("experts", []))
+            block = (
+                f"SHOW: {ep.get('podcast_title')}\n"
+                f"EPISODE: {ep.get('title')}\n"
+                f"AUTHORITY: {ep.get('source_organization')} (Score: {ep.get('authority_score')})\n"
+                f"HOOK: {ep.get('narrative_hook')}\n"
+                f"EXPERTS MENTIONED: {experts_str}\n"
+                f"TAKEAWAY: {ep.get('engagement', {}).get('takeaway')}\n"
+            )
+            context_blocks.append(block)
+        all_context = "\n---\n".join(context_blocks)
+        
+        prev_context = ""
+        if previous_pulse:
+            prev_shifts = [f"- {s.get('title')}: {s.get('shift')}" for s in previous_pulse.get("narrativeShifts", [])]
+            prev_context = "\nPREVIOUS PULSE CONTEXT (For Narrative Continuity):\n" + "\n".join(prev_shifts)
+
+        prompt = f"""You are GoldMine Regional Intelligence. 
+Synthesize a 'Master Regional Pulse' for: '{region_id}'
+
+REGIONAL SIGNALS:
+{all_context}
+{prev_context}
+
+Your task:
+1. **Authority Weighting**: Each signal has an 'AUTHORITY Score'. Give significantly more weight to 'ABC Newsroom' (1.0) and 'ABC Specialized' (0.7) reports.
+2. **Master Summary**: A 50-word high-intensity summary of the regional landscape.
+3. **Narrative Shifts**: Identify 3-5 key updates.
+4. **Canonical Events**: Cluster the signals into 1-3 'Canonical Events'. An event is a specific, actionable news story or topic that spans multiple episodes or persists over time. 
+   - 'eventId': A URL-friendly slug (e.g. 'seqld-flood-recovery-2026').
+   - 'title': Human-readable event name.
+   - 'description': What happened.
+   - 'tags': Keywords.
+   - 'storylineUpdates': A list of objects representing the coverage. Each object must have 'updateId' (a unique slug), 'episodeTitle' (the episode title), 'date' (ISO date of the episode), and 'summary' (how this episode advances the event).
+5. **Featured Episodes**: IDs of the most relevant episodes.
+
+Return ONLY valid JSON.
+"""
+        class RegionalPulseResp(BaseModel):
+            masterSummary: str
+            narrativeShifts: List[Dict[str, Any]]
+            featuredEpisodes: List[str]
+            canonicalEvents: List[Dict[str, Any]] = Field(default_factory=list)
+            
+        return await self._generate(prompt, RegionalPulseResp)
+
 # --- Ollama Provider (Local Qwen) ---
 
 class OllamaEngine(AIEngine):
-    def __init__(self, endpoint: str = "http://localhost:11434/api/generate", model: str = "qwen3.5:latest"):
+    def __init__(self, endpoint: str = "http://localhost:11434/api/generate", model: str = "gemma4:latest"):
         self.endpoint = endpoint
         self.model = model
+
+    async def generate_regional_master_pulse(self, region_id: str, episodes_data: List[Dict[str, Any]], previous_pulse: Optional[Dict] = None) -> Optional[Dict]:
+        context_blocks = []
+        for ep in episodes_data:
+            experts_str = ", ".join(ep.get("experts", []))
+            block = (
+                f"SHOW: {ep.get('podcast_title')}\n"
+                f"EPISODE: {ep.get('title')}\n"
+                f"AUTHORITY: {ep.get('source_organization')} (Score: {ep.get('authority_score')})\n"
+                f"HOOK: {ep.get('narrative_hook')}\n"
+                f"EXPERTS MENTIONED: {experts_str}\n"
+                f"TAKEAWAY: {ep.get('engagement', {}).get('takeaway')}\n"
+            )
+            context_blocks.append(block)
+        all_context = "\n---\n".join(context_blocks)
+        
+        prev_context = ""
+        if previous_pulse:
+            prev_shifts = [f"- {s.get('title')}: {s.get('shift')}" for s in previous_pulse.get("narrativeShifts", [])]
+            prev_context = "\nPREVIOUS PULSE CONTEXT (For Narrative Continuity):\n" + "\n".join(prev_shifts)
+
+        prompt = f"""You are GoldMine Regional Intelligence. 
+Synthesize a 'Master Regional Pulse' for: '{region_id}'
+
+REGIONAL SIGNALS:
+{all_context}
+{prev_context}
+
+Your task:
+1. **Authority Weighting**: Each signal has an 'AUTHORITY Score'. Give significantly more weight to 'ABC Newsroom' (1.0) and 'ABC Specialized' (0.7) reports.
+2. **Master Summary**: A 50-word high-intensity summary of the regional landscape.
+3. **Narrative Shifts**: Identify 3-5 key updates.
+... (Rest of format) ...
+"""
+        return await self._generate(prompt)
+
 
     async def _generate(self, prompt: str, schema: Optional[type[BaseModel]] = None) -> Optional[Dict]:
         import aiohttp
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "format": "json",
             "stream": False,
             "options": {
                 "temperature": 0.3,
@@ -237,7 +448,10 @@ class OllamaEngine(AIEngine):
                         if resp.status == 200:
                             data = await resp.json()
                             raw_res = data.get("response", "{}")
-                            print(f"       [DEBUG OLLAMA RES] {raw_res[:200]}...")
+                            if not raw_res or raw_res == "{}":
+                                print(f"       [DEBUG OLLAMA] Empty response for prompt: {prompt[:100]}...")
+                            else:
+                                print(f"       [DEBUG OLLAMA] Raw Res: {raw_res[:200]}...")
                             return extract_json_from_text(raw_res)
                         elif resp.status == 503: # Overloaded
                             print(f"       [WARN OLLAMA] Service overloaded. Cooldown (30s)...")
@@ -300,6 +514,35 @@ Return ONLY valid JSON."""
         class HighlightsResp(BaseModel): highlights: List[HighlightSchema]
         res = await self._generate(prompt, HighlightsResp)
         return res.get("highlights", []) if res else []
+
+    async def generate_deep_context_timeline(self, transcript_text: str, title: str) -> List[Dict]:
+        prompt = f"Identify expert mentions and show links with timestamps for {title}:\n{transcript_text}"
+        class TimelineResp(BaseModel): timeline: List[TimelineItemSchema]
+        res = await self._generate(prompt, TimelineResp)
+        return res.get("timeline", []) if res else []
+
+    async def generate_regional_master_pulse(self, region_id: str, episodes_data: List[Dict[str, Any]], previous_pulse: Optional[Dict] = None) -> Optional[Dict]:
+        context_blocks = []
+        for ep in episodes_data:
+            block = f"SHOW: {ep.get('podcast_title')}\nEPISODE: {ep.get('title')}\nHOOK: {ep.get('narrative_hook')}\nTAKEAWAY: {ep.get('engagement', {}).get('takeaway')}\n"
+            context_blocks.append(block)
+        all_context = "\n---\n".join(context_blocks)
+        
+        prompt = f"""You are GoldMine Regional Intelligence. 
+Analyze the following regional news signals for the region: '{region_id}'
+
+REGIONAL SIGNALS:
+{all_context}
+
+Your task is to synthesize a single 'Master Regional Pulse' for all listeners in this region. 
+1. **Deduplicate**: Identify overlapping story arcs and merge them.
+2. **Synthesize Narrative Shifts**: Identify 3-5 key narrative shifts or updates for the region.
+3. **Master Summary**: Create a high-intensity 50-word master summary of the regional landscape.
+
+Return a structured JSON object with 'masterSummary', 'narrativeShifts', and 'featuredEpisodes'.
+Return ONLY valid JSON.
+"""
+        return await self._generate(prompt)
 
 # --- Factory & Global Access ---
 
@@ -390,16 +633,22 @@ async def generate_chapters(session, segments, title, ctx=None):
     engine = get_engine(ctx=ctx)
     return await engine.generate_chapters(text, title)
 
-async def analyze_episode_transcript(session, segments, title, ctx=None):
-    if not segments: return None
+async def analyze_episode_transcript(session, segments, title, transcript=None, ctx=None):
+    if not segments and not transcript: return None
     engine = get_engine(ctx=ctx)
-    return await engine.analyze_episode_transcript(segments, title)
+    return await engine.analyze_episode_transcript(segments, title, transcript=transcript)
 
 async def extract_highlights(session, segments, title, ctx=None):
     if not segments: return []
     text = _build_transcript_block(segments, max_segs=200)
     engine = get_engine(ctx=ctx)
     return await engine.extract_highlights(text, title)
+
+async def generate_deep_context_timeline(session, segments, title, ctx=None):
+    if not segments: return []
+    text = _build_transcript_block(segments, max_segs=800)
+    engine = get_engine(ctx=ctx)
+    return await engine.generate_deep_context_timeline(text, title)
 
 # Placeholder for additional legacy functions if needed
 async def identify_speakers(session, segments, title, description, ctx=None): return {}
