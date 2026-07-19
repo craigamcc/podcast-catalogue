@@ -1,9 +1,10 @@
-from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
 import aiohttp
+from urllib.parse import urlparse
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 
@@ -42,20 +43,56 @@ def get_latest_regional_pulse(region_id: str) -> Optional[Dict]:
     return latest
 
 
+# --- Security configuration ---
+# All /api routes require `Authorization: Bearer $GOLDMINE_API_TOKEN`.
+# The server refuses to start without the token so an unauthenticated
+# instance can never come up by accident.
+API_TOKEN_ENV = "GOLDMINE_API_TOKEN"
+
+# Comma-separated origins; empty (the default) means no cross-origin access.
+CORS_ORIGINS = [o.strip() for o in os.environ.get("GOLDMINE_CORS_ORIGINS", "").split(",") if o.strip()]
+
+# /api/v1/ingest may only crawl these hosts (SSRF guard); env-extensible.
+INGEST_ALLOWED_HOSTS = {"www.abc.net.au"} | {
+    h.strip().lower() for h in os.environ.get("GOLDMINE_INGEST_HOSTS", "").split(",") if h.strip()
+}
+
+INGEST_CONTENT_MAX_BYTES = 256 * 1024
+
 app = FastAPI(
     title="PRISM Intelligence API",
     description="HTTP Bridge for the Prism Podcast Intelligence Hub. Enables browser-based discovery and AI integration.",
     version="5.0.0"
 )
 
-# Enable CORS for browser-based consumer apps (SoTA, Daisy, Sentinel)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+@app.on_event("startup")
+async def _require_api_token():
+    if not os.environ.get(API_TOKEN_ENV):
+        raise RuntimeError(
+            f"{API_TOKEN_ENV} is not set. Refusing to start an unauthenticated bridge — "
+            f"export {API_TOKEN_ENV}=<secret> and restart."
+        )
+
+
+@app.middleware("http")
+async def _bearer_auth(request: Request, call_next):
+    if request.url.path != "/" and request.method != "OPTIONS":
+        expected = os.environ.get(API_TOKEN_ENV)
+        supplied = request.headers.get("Authorization", "")
+        if not expected or supplied != f"Bearer {expected}":
+            return JSONResponse(status_code=401, content={"detail": "Missing or invalid bearer token."})
+    return await call_next(request)
+
+
+if CORS_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=CORS_ORIGINS,
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 @app.get("/")
 async def root():
@@ -124,6 +161,8 @@ async def ingest_signal(req: IngestRequest, background_tasks: BackgroundTasks):
     Supports URLs (automated crawl) or Markdown content (Snipd exports).
     """
     if req.content:
+        if len(req.content.encode("utf-8")) > INGEST_CONTENT_MAX_BYTES:
+            raise HTTPException(status_code=413, detail=f"content exceeds {INGEST_CONTENT_MAX_BYTES} bytes.")
         # Snipd Reverse Ingestion path
         background_tasks.add_task(store.ingest_snipd_markdown, req.content)
         return {
@@ -134,6 +173,15 @@ async def ingest_signal(req: IngestRequest, background_tasks: BackgroundTasks):
 
     if not req.url:
         raise HTTPException(status_code=400, detail="Either 'url' or 'content' must be provided.")
+
+    parsed = urlparse(req.url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme not in ("http", "https") or host not in INGEST_ALLOWED_HOSTS:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Host '{host or req.url}' is not on the ingest allowlist "
+                   f"({', '.join(sorted(INGEST_ALLOWED_HOSTS))}). Extend via GOLDMINE_INGEST_HOSTS.",
+        )
 
     builder = CatalogueBuilder()
     config = CatalogueConfig(
@@ -270,7 +318,7 @@ async def get_pulse_audio(region: str = "seqld", sub_region: Optional[str] = Non
     # 2. Call TTS server (SoundScope)
     tts_url = "http://localhost:8001/tts"
     try:
-        async with aiohttp.ClientSession() as client_session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as client_session:
             payload = {
                 "text": script,
                 "language": "English",

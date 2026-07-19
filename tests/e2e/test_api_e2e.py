@@ -4,14 +4,21 @@ PRISM HTTP API — End-to-End Tests.
 Tests all FastAPI endpoints with proper isolation via the seeded_store fixture.
 Covers happy paths, edge cases, validation, and error handling.
 """
+import os
+
 import pytest
 
 pytest.importorskip("fastapi", reason="prism_http requires the optional 'http' extra (pip install -e .[http])")
 
+# The bridge requires bearer auth (P4.1); authenticate all e2e requests.
+os.environ.setdefault("GOLDMINE_API_TOKEN", "e2e-test-token")
+
 from fastapi.testclient import TestClient
 from podcast_catalogue.prism_http import app
 
-client = TestClient(app)
+client = TestClient(
+    app, headers={"Authorization": f"Bearer {os.environ['GOLDMINE_API_TOKEN']}"}
+)
 
 
 # ── Root Endpoint ──────────────────────────────────────────────────────────
@@ -133,11 +140,14 @@ class TestIngestEndpoint:
         assert data["type"] == "snipd_markdown"
 
     def test_ingest_url_trigger(self):
-        response = client.post("/api/v1/ingest", json={"url": "https://example.com/feed"})
+        # Must be an allowlisted host (P4.1 SSRF guard); the rejection path is
+        # covered in tests/test_security.py.
+        url = "https://www.abc.net.au/listen/programs/conversations"
+        response = client.post("/api/v1/ingest", json={"url": url})
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ingestion_triggered"
-        assert data["url"] == "https://example.com/feed"
+        assert data["url"] == url
 
 
 # ── Recommend Endpoint ─────────────────────────────────────────────────────
