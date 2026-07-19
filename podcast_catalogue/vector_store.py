@@ -26,8 +26,7 @@ except ImportError:
     voyager = None
     VOYAGER_AVAILABLE = False
 
-OLLAMA_EMBED_URL = "http://localhost:11434/api/embed"
-EMBED_MODEL = "nomic-embed-text"
+from .config import OLLAMA_EMBED_URL, EMBED_MODEL
 
 # Persistent storage paths
 from .config import DATA_DIR
@@ -140,22 +139,25 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
 
 async def index_episode(
     session: aiohttp.ClientSession,
-    table,  # Might be None if it hasn't been created yet
+    db,  # LanceDB connection — pass one per stage run; None opens a fresh one
     podcast_title: str,
     episode: Dict[str, Any]
 ) -> int:
     """
-    Indexes a single episode into LanceDB.
+    Indexes a single episode into LanceDB (idempotently, keyed on chunk_id).
     Chunks the transcript (or description) and embeds each chunk.
     Returns the number of chunks indexed.
     """
     if not LANCEDB_AVAILABLE:
         return 0
-        
-    db = get_db_client()
+
+    # Reuse the caller-provided connection; only open a fresh one as a
+    # fallback (previously every episode opened its own connection).
+    if db is None or not hasattr(db, "table_names"):
+        db = get_db_client()
     if db is None:
         return 0
-        
+
     table_name = "podcast_episodes"
     
     ep_title = episode.get("title", "Unknown")
@@ -183,20 +185,10 @@ async def index_episode(
     
     chunks = chunk_text(full_text)
     data_to_insert = []
-    
-    # If the table exists, we want to fetch the existing IDs to avoid duplicates
-    existing_ids = set()
-    if table_name in db.table_names():
-        table = db.open_table(table_name)
-        # Using a simple scan/search to get IDs. A more efficient way is to rely on Lance's merge/upsert operations if available.
-        # For simplicity, we just won't deduplicate at the chunk level natively without a primary key index,
-        # but LanceDB strongly encourages upserts. Let's do simple insertions.
-    
+
     for i, chunk in enumerate(chunks):
         chunk_id = hashlib.sha256(f"{podcast_title}:{ep_title}:{i}".encode()).hexdigest()[:16]
-        
-        # In a real production system, you'd do a batch filter for existing chunk_ids.
-        
+
         embedding = await embed_text(session, chunk)
         if not embedding:
             continue
@@ -217,11 +209,20 @@ async def index_episode(
         
     if not data_to_insert:
         return 0
-        
+
     if table_name not in db.table_names():
         db.create_table(table_name, data=data_to_insert)
     else:
+        # Idempotent upsert: delete any prior rows for these deterministic
+        # chunk IDs before inserting, so re-indexing the same episode can
+        # never accumulate duplicates (previously every re-index duplicated
+        # every chunk until a manual rebuild).
         t = db.open_table(table_name)
+        id_list = ", ".join(f"'{row['id']}'" for row in data_to_insert)
+        try:
+            t.delete(f"id IN ({id_list})")
+        except Exception:
+            pass  # table may predate the id column; insert proceeds regardless
         t.add(data_to_insert)
     
     # Sync with Voyager
@@ -310,16 +311,20 @@ async def semantic_search(
             id_list_str = ", ".join([f"'{i}'" for i in matched_ids])
             rows = table.search(None).where(f"id IN ({id_list_str})").to_list()
             
-            # Sort rows back into Voyager's ranking order and filter by genre if provided
+            # Pair each ID with its distance BEFORE any filtering, so scores
+            # stay attached to the right row even when IDs are missing from
+            # LanceDB or removed by the genre filter (previously distances
+            # were assigned by position against the filtered list).
+            distance_by_id = {mid: float(d) for mid, d in zip(matched_ids, distances)}
+
             row_map = {row["id"]: row for row in rows}
             results = [row_map[mid] for mid in matched_ids if mid in row_map]
-            
+
             if genre:
                 results = [r for r in results if genre.lower() in r.get("primary_genre", "").lower()]
-            
-            # Add distance info manually since we bypassed Lance's search
-            for i, row in enumerate(results):
-                row["_distance"] = float(distances[i])
+
+            for row in results:
+                row["_distance"] = distance_by_id[row["id"]]
                 
         except Exception as e:
             print(f"    [WARN VOYAGER SEARCH] {e}. Falling back to native search.")

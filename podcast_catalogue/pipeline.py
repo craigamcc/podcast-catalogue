@@ -528,8 +528,8 @@ class ScoutEnrichStage(Stage):
                                 if t.get("contentRisk"):
                                     try:
                                         ep.content_risk = ContentRisk(**t["contentRisk"])
-                                    except Exception as re:
-                                        print(f"    ⚠️ Risk parsing error: {re}")
+                                    except Exception as err:
+                                        print(f"    ⚠️ Risk parsing error: {err}")
                             
                             if e_data.get("ai_provenance"):
                                 try:
@@ -734,7 +734,7 @@ class IndexStage(Stage):
             total_indexed = 0
             for ep in podcast.episodes:
                 ep_dict = ep.model_dump(by_alias=True)
-                n = await index_episode(ctx.session, collection, podcast.title, ep_dict)
+                n = await index_episode(ctx.session, db_client, podcast.title, ep_dict)
                 total_indexed += n
             if total_indexed > 0:
                 print(f"  🔍 {podcast.title[:30]}: indexed {total_indexed} chunks")
