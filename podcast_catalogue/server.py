@@ -470,20 +470,10 @@ def get_episode_details(podcast_title: str, episode_title: str) -> Any:
     Get full structured metadata for a specific episode.
     Returns transcript, chapters, highlights (with trust signals), guests, entities, vibe, and engagement data.
     """
-    p = store.get_details(podcast_title)
-    if not p:
-        return json.dumps({"error": f"Podcast '{podcast_title}' not found."}, indent=2)
-    
-    episode = None
-    ep_lower = episode_title.lower()
-    for ep in p.get("episodes", []):
-        if ep_lower == ep.get("title", "").lower() or ep_lower in ep.get("title", "").lower():
-            episode = ep
-            break
-            
-    if not episode:
-        return json.dumps({"error": f"Episode '{episode_title}' not found in '{podcast_title}'."}, indent=2)
-        
+    p, episode, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return json.dumps({"error": err}, indent=2)
+
     return json.dumps(episode, indent=2, default=str)
 
 @mcp.tool()
@@ -492,20 +482,10 @@ async def play_episode(podcast_title: str, episode_title: str) -> Any:
     Get the playable audio URL for an episode.
     Use this when the user wants to listen to a specific episode.
     """
-    p = store.get_details(podcast_title)
-    if not p:
-        return f"Podcast '{podcast_title}' not found."
-    
-    episode = None
-    ep_lower = episode_title.lower()
-    for ep in p.get("episodes", []):
-        if ep_lower == ep.get("title", "").lower() or ep_lower in ep.get("title", "").lower():
-            episode = ep
-            break
-            
-    if not episode:
-        return f"Episode '{episode_title}' not found in '{podcast_title}'."
-        
+    p, episode, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+
     audio_url = episode.get("audioUrl") or episode.get("audio_url")
     
     # DYNAMIC MEDIA BRIDGE: If URL is null, try to fetch it live from the episode page
@@ -551,20 +531,10 @@ def get_editorial_trust_report(podcast_title: str, episode_title: str) -> Any:
     Includes claim status, content risk labels, AI provenance, and source anchors.
     Use this to verify the 'truth-status' and liability of any highlight or claim.
     """
-    p = store.get_details(podcast_title)
-    if not p:
-        return json.dumps({"error": f"Podcast '{podcast_title}' not found."}, indent=2)
-    
-    episode = None
-    ep_lower = episode_title.lower()
-    for ep in p.get("episodes", []):
-        if ep_lower == ep.get("title", "").lower() or ep_lower in ep.get("title", "").lower():
-            episode = ep
-            break
-            
-    if not episode:
-        return json.dumps({"error": f"Episode '{episode_title}' not found in '{podcast_title}'."}, indent=2)
-        
+    p, episode, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return json.dumps({"error": err}, indent=2)
+
     report = {
         "episode": episode.get("title"),
         "podcast": podcast_title,
@@ -618,13 +588,8 @@ def generate_json_ld(podcast_title: str, episode_title: Optional[str] = None) ->
     }
     
     if episode_title:
-        episode = None
-        ep_lower = episode_title.lower()
-        for ep in p.get("episodes", []):
-            if ep_lower == ep.get("title", "").lower() or ep_lower in ep.get("title", "").lower():
-                episode = ep
-                break
-        
+        _, episode, _err = _find_episode(podcast_title, episode_title)
+
         if episode:
             ld["@type"] = "PodcastEpisode"
             ld["name"] = episode.get("title")
@@ -770,19 +735,9 @@ def get_dj_session_bundle(podcast_title: str, episode_title: str) -> Any:
     Supplies the immediate context (Vibe, Hook) and explicitly 
     instructs the agent to flush its raw conversation history.
     """
-    p = store.get_details(podcast_title)
-    if not p:
-        return json.dumps({"error": f"Podcast '{podcast_title}' not found."}, indent=2)
-    
-    episode = None
-    ep_lower = episode_title.lower()
-    for ep in p.get("episodes", []):
-        if ep_lower in ep.get("title", "").lower():
-            episode = ep
-            break
-            
-    if not episode:
-        return json.dumps({"error": f"Episode '{episode_title}' not found."}, indent=2)
+    p, episode, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return json.dumps({"error": err}, indent=2)
 
     bundle = {
         "directive": "SYSTEM_STATE_FLUSH",
@@ -880,21 +835,11 @@ async def ingest_social_telemetry(podcast_title: str, episode_title: str, platfo
     Topics and mentions should be comma-separated strings.
     """
     from .models import SocialTelemetry
-    
-    p = store.get_details(podcast_title)
-    if not p:
-        return json.dumps({"error": f"Podcast '{podcast_title}' not found."}, indent=2)
-        
-    target_ep = None
-    ep_lower = episode_title.lower()
-    for ep in p.get("episodes", []):
-        if ep_lower in ep.get("title", "").lower():
-            target_ep = ep
-            break
-            
-    if not target_ep:
-        return json.dumps({"error": f"Episode '{episode_title}' not found."}, indent=2)
-        
+
+    p, target_ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return json.dumps({"error": err}, indent=2)
+
     telemetry = SocialTelemetry(
         platform=platform,
         discussionVolume=volume,
@@ -1469,26 +1414,10 @@ async def extract_audio_clip(podcast_title: str, episode_title: str, start_secon
     Returns the path to the generated MP3 file.
     Use get_episode_chapters, get_episode_highlights, or search_transcripts to find timestamps first.
     """
-    p = store.get_details(podcast_title)
-    if not p:
-        return f"Podcast '{podcast_title}' not found."
-    
-    episode = None
-    for ep in p.get("episodes", []):
-        if ep.get("title", "").lower() == episode_title.lower():
-            episode = ep
-            break
-    
-    if not episode:
-        # Try partial match
-        for ep in p.get("episodes", []):
-            if episode_title.lower() in ep.get("title", "").lower():
-                episode = ep
-                break
-    
-    if not episode:
-        return f"Episode '{episode_title}' not found in '{podcast_title}'."
-    
+    p, episode, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+
     audio_url = episode.get("audioUrl")
     if not audio_url:
         return f"No audio URL available for '{episode_title}'. Run with --deep-crawl first."
@@ -1526,13 +1455,34 @@ from .ai_enricher import (
     
     
 def _find_episode(podcast_title: str, episode_title: str):
-    """Helper: find podcast dict and episode dict by title (partial match)."""
+    """Find podcast dict and episode dict by title.
+
+    Match order: exact title match, then unique-substring match. A substring
+    match against more than one episode is ambiguous and reported as an
+    error listing the candidates, rather than silently picking whichever one
+    happened to come first in the list.
+    """
     p = store.get_details(podcast_title)
     if not p:
         return None, None, f"Podcast '{podcast_title}' not found."
-    for ep in p.get("episodes", []):
-        if episode_title.lower() in ep.get("title", "").lower():
+
+    episodes = p.get("episodes", [])
+    ep_lower = episode_title.lower()
+
+    for ep in episodes:
+        if ep.get("title", "").lower() == ep_lower:
             return p, ep, None
+
+    matches = [ep for ep in episodes if ep_lower in ep.get("title", "").lower()]
+    if len(matches) == 1:
+        return p, matches[0], None
+    if len(matches) > 1:
+        candidates = ", ".join(f"'{m.get('title')}'" for m in matches[:10])
+        return p, None, (
+            f"'{episode_title}' matches multiple episodes in '{podcast_title}': "
+            f"{candidates}. Use a more specific title."
+        )
+
     return p, None, f"Episode '{episode_title}' not found in '{podcast_title}'."
     
     
