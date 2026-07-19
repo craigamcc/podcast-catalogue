@@ -19,11 +19,13 @@ mcp = FastMCP("Podcast Catalogue")
 
 
 # Try enriched data first, fallback to basic
-UNIVERSE_DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/universe.jsonl")
-FULL_INTELLIGENCE_DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/podcasts_450_full_intelligence.jsonl")
-ENRICHED_DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/podcasts_enriched.jsonl")
-BASIC_DATA_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/podcasts.jsonl")
-REGIONAL_PULSE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data/regional_pulses.jsonl")
+from .config import data_path
+
+UNIVERSE_DATA_FILE = data_path("universe.jsonl")
+FULL_INTELLIGENCE_DATA_FILE = data_path("podcasts_450_full_intelligence.jsonl")
+ENRICHED_DATA_FILE = data_path("podcasts_enriched.jsonl")
+BASIC_DATA_FILE = data_path("podcasts.jsonl")
+REGIONAL_PULSE_FILE = data_path("regional_pulses.jsonl")
 
 if os.path.exists(UNIVERSE_DATA_FILE):
     DATA_FILE = UNIVERSE_DATA_FILE

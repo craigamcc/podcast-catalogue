@@ -30,7 +30,8 @@ OLLAMA_EMBED_URL = "http://localhost:11434/api/embed"
 EMBED_MODEL = "nomic-embed-text"
 
 # Persistent storage paths
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../data")
+from .config import DATA_DIR
+
 DB_PATH = os.path.join(DATA_DIR, "lancedb_store")
 VOYAGER_INDEX_PATH = os.path.join(DATA_DIR, "voyager_index.voy")
 VOYAGER_MAP_PATH = os.path.join(DATA_DIR, "voyager_map.json")

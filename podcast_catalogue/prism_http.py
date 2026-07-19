@@ -18,7 +18,9 @@ from .recommender import calculate_jtbd_affinities
 from .dj_triage import triage_service
 from .catalogue import CatalogueBuilder, CatalogueConfig
 
-REGIONAL_PULSE_FILE = os.path.join(os.path.dirname(__file__), "../data/regional_pulses.jsonl")
+from .config import data_path
+
+REGIONAL_PULSE_FILE = data_path("regional_pulses.jsonl")
 
 def get_latest_regional_pulse(region_id: str) -> Optional[Dict]:
     """Helper to retrieve the most recent master pulse for a region."""
