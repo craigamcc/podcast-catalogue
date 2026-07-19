@@ -48,6 +48,22 @@ class DataStore:
         self.episodes_index: List[Dict[str, Any]] = [] # For semantic/text search
         self.episodes_by_id: Dict[str, Dict[str, Any]] = {} # Unique ID mapping
 
+    @staticmethod
+    def _provenance_or_default(ep: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Return the episode's AI provenance, or an honest default.
+
+        If an episode carries AI enrichment (vibe, highlights, chapters) but no
+        provenance record, synthesize one marked unknown/unreviewed so downstream
+        consumers can never mistake unlabeled model output for verified content.
+        """
+        existing = ep.get("aiProvenance") or ep.get("ai_provenance")
+        if existing:
+            return existing
+        has_ai_enrichment = bool(ep.get("vibe") or ep.get("highlights") or ep.get("chapters"))
+        if has_ai_enrichment:
+            return {"modelName": "unknown", "humanReviewed": False}
+        return None
+
     def _build_aggregate_vibes(self):
         """Computes show-level vibes based on the majority tone/complexity of its episodes."""
         for title, podcast in self.podcasts.items():
@@ -82,14 +98,19 @@ class DataStore:
             return
 
         print(f"Loading GoldMine catalogue from {path}...", file=sys.stderr)
-        
+
         # Clear existing state for clean reload
         self.podcasts = {}
         self.episodes_index = []
         self.episodes_by_id = {}
 
+        quarantined = 0
+        quarantine_path = path + ".quarantine.jsonl"
+
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
+                if not line.strip():
+                    continue
                 try:
                     data = json.loads(line)
                     title = data.get("title")
@@ -126,30 +147,51 @@ class DataStore:
                             # Editorial Trust Layer
                             "genre": ep.get("genre"),
                             "content_risk": ep.get("contentRisk") or ep.get("content_risk"),
-                            "ai_provenance": ep.get("aiProvenance") or ep.get("ai_provenance"),
+                            "ai_provenance": self._provenance_or_default(ep),
                             "expires": ep.get("expires"),
                             "content_reference_time": ep.get("contentReferenceTime") or ep.get("content_reference_time"),
                         }
                         self.episodes_index.append(episode_data)
                         self.episodes_by_id[ep_id] = episode_data
-                except Exception as e:
+                except Exception:
+                    # Quarantine, never silently drop: a malformed line followed
+                    # by a full-file save_data() rewrite was permanent data loss.
+                    quarantined += 1
+                    try:
+                        with open(quarantine_path, "a", encoding="utf-8") as qf:
+                            qf.write(line if line.endswith("\n") else line + "\n")
+                    except OSError as qe:
+                        print(f"Warning: could not quarantine bad line: {qe}", file=sys.stderr)
                     continue
-        
+
         # Priority 1: Aggregate Show Vibes
         self._build_aggregate_vibes()
-        
+
         print(f"Loaded {len(self.podcasts)} shows and {len(self.episodes_index)} episodes.", file=sys.stderr)
+        if quarantined:
+            print(
+                f"Warning: {quarantined} unparseable line(s) moved to {quarantine_path} — "
+                "review and repair; they are excluded from the store and from future saves.",
+                file=sys.stderr,
+            )
 
     def save_data(self, path: str = DATA_FILE):
-        """Persists the in-memory podcasts store back to a JSONL file."""
+        """Persists the in-memory podcasts store back to a JSONL file (atomically)."""
         print(f"Saving GoldMine catalogue to {path}...", file=sys.stderr)
+        tmp_path = path + ".tmp"
         try:
-            with open(path, "w", encoding="utf-8") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 for podcast in self.podcasts.values():
                     f.write(json.dumps(podcast, ensure_ascii=False) + "\n")
+            os.replace(tmp_path, path)
             print(f"Successfully saved {len(self.podcasts)} shows.", file=sys.stderr)
         except Exception as e:
             print(f"Error saving data: {e}", file=sys.stderr)
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except OSError:
+                pass
 
     def ingest_snipd_markdown(self, content: str):
         """Parses Snipd Markdown and integrates it into the store."""
