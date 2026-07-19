@@ -18,7 +18,6 @@ from .models import Podcast, Review, Vibe, TargetAudience, TranscriptSegment, Ch
 from .parser import parse_podcast_detail, parse_episode_page
 from .authority import get_authority_for_podcast
 from .entity_registry import apply_corrections
-from .transcriber import process_episode_transcription
 from .enricher import enrich_podcast_data, search_itunes_podcast
 from .ai_enricher import (
     analyze_podcast_description,
@@ -379,6 +378,8 @@ class TranscribeStage(Stage):
     name = "transcribe"
 
     async def process(self, podcasts: List[Podcast], ctx: PipelineContext, **kwargs) -> List[Podcast]:
+        from .transcriber import process_episode_transcription
+
         on_podcast_processed = kwargs.get("on_podcast_processed")
         config = ctx.config
 
