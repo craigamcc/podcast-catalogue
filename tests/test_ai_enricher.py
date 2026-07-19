@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import unittest
-from podcast_catalogue.ai_enricher import extract_json
+from podcast_catalogue.ai_enricher import extract_json_from_text as extract_json
 
 
 class TestExtractJson(unittest.TestCase):
