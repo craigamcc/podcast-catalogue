@@ -5,6 +5,9 @@ Tests all FastAPI endpoints with proper isolation via the seeded_store fixture.
 Covers happy paths, edge cases, validation, and error handling.
 """
 import pytest
+
+pytest.importorskip("fastapi", reason="prism_http requires the optional 'http' extra (pip install -e .[http])")
+
 from fastapi.testclient import TestClient
 from podcast_catalogue.prism_http import app
 
