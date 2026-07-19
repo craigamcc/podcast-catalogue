@@ -1211,993 +1211,901 @@ def get_catalogue_stats() -> Any:
         "network": "ABC Australian Content"
     }, indent=2)
 
-# --- LEGACY GATING START ---
-if os.environ.get("GOLDMINE_LEGACY_TOOLS", "0") == "1":
 
 
     
-    @mcp.resource("podcasts://stats")
-    def get_stats() -> Any:
-        """Returns statistics about the podcast catalogue."""
-        return f"Total Podcasts: {len(store.podcasts)}"
+@mcp.resource("podcasts://stats")
+def get_stats() -> Any:
+    """Returns statistics about the podcast catalogue."""
+    return f"Total Podcasts: {len(store.podcasts)}"
     
     
-    # --- Phase 10: Conversational Service Tools ---
+# --- Phase 10: Conversational Service Tools ---
     
-    import aiohttp
-    import asyncio
-    import ssl
-    import certifi
-    from .recommender import recommend
-    from .router import classify_intent, format_conversational_response
-    from .models import Podcast, Episode
-    from .vector_store import get_db_client, get_collection, semantic_search, embed_text
-    from .catalogue import CatalogueBuilder, CatalogueConfig
-    from .exporter import export_jsonl
-    from .reporter_adapter import generate_editorial_report
+import aiohttp
+import asyncio
+import ssl
+import certifi
+from .recommender import recommend
+from .router import classify_intent, format_conversational_response
+from .models import Podcast, Episode
+from .vector_store import get_db_client, get_collection, semantic_search, embed_text
+from .catalogue import CatalogueBuilder, CatalogueConfig
+from .exporter import export_jsonl
+from .reporter_adapter import generate_editorial_report
     
-    # Conversation memory (lightweight, per session)
-    _conversations: Dict[str, List[Dict[str, str]]] = {}
+# Conversation memory (lightweight, per session)
+_conversations: Dict[str, List[Dict[str, str]]] = {}
     
-    # --- Search Configuration ---
-    # Lazy-load LanceDB to avoid overhead if only listing shows
-    _lancedb_client = None
-    _lancedb_table = None
+# --- Search Configuration ---
+# Lazy-load LanceDB to avoid overhead if only listing shows
+_lancedb_client = None
+_lancedb_table = None
     
-    def _get_vector_collection():
-        global _lancedb_client, _lancedb_table
-        if _lancedb_table is None:
-            try:
-                _lancedb_client = get_db_client()
-                _lancedb_table = get_collection(_lancedb_client)
-            except Exception as e:
-                print(f"Warning: LanceDB not available: {e}", file=sys.stderr)
-        return _lancedb_table
+def _get_vector_collection():
+    global _lancedb_client, _lancedb_table
+    if _lancedb_table is None:
+        try:
+            _lancedb_client = get_db_client()
+            _lancedb_table = get_collection(_lancedb_client)
+        except Exception as e:
+            print(f"Warning: LanceDB not available: {e}", file=sys.stderr)
+    return _lancedb_table
     
     
-    @mcp.tool()
-    async def timeline_set(
-        podcast_title: str,
-        episode_title: str,
-        start: float,
-        end: float,
-        item_type: str,
-        title: str,
-        link: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
-    ) -> str:
-        """
-        Inject a rich marker into an episode's Deep Context Timeline.
-        
-        Args:
-            podcast_title: The title of the podcast.
-            episode_title: The title of the episode.
-            start: Start time in seconds.
-            end: End time in seconds.
-            item_type: One of 'CHAPTER', 'EXPERT', 'SHOW_LINK', 'IMAGE', 'AD'.
-            title: Display title for the marker.
-            link: Optional URL for deep linking.
-            metadata: Optional dictionary for additional rich data (e.g., guest bio).
-        """
-        # Find the podcast
-        pod = None
-        for p in self.podcasts.values():
-            if p.title.lower() == podcast_title.lower():
-                pod = p
-                break
-        
-        if not pod:
-            return f"Podcast '{podcast_title}' not found."
+@mcp.tool()
+async def chat(message: str, session_id: str = "default") -> Any:
+    """
+    Conversational entry point. Send a natural language message and get back
+    podcast recommendations, search results, or answers to queries.
+    Supports multi-turn context via session_id.
+    """
+    # Get or create conversation history
+    if session_id not in _conversations:
+        _conversations[session_id] = []
+    history = _conversations[session_id]
+    
+    async def _process():
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            # 1. Classify intent
+            intent_data = await classify_intent(session, message, history)
+            intent = intent_data.get("intent", "search")
+            params = intent_data.get("params", {})
+            hint = intent_data.get("response_hint", "")
+    
+            # 2. Dispatch to engine
+            results = []
+                
+            if intent == "recommend":
+                results = recommend(
+                    store.podcasts,
+                    interests=params.get("interests"),
+                    scenario=params.get("scenario"),
+                    tone=params.get("tone"),
+                    pace=params.get("pace"),
+                    max_complexity=params.get("max_complexity"),
+                    genres=params.get("genres"),
+                    top_k=5
+                )
+                
+            elif intent == "search":
+                keyword = params.get("keyword", message)
+                # Try semantic search first
+                collection = _get_vector_collection()
+                if collection and collection.count() > 0:
+                    results = await semantic_search(session, collection, keyword, top_k=5)
+                else:
+                    # Fallback to keyword search
+                    results = store.search(keyword)
+                
+            elif intent == "query":
+                title = params.get("podcast_title", "")
+                if title:
+                    p = store.get_details(title)
+                    if p:
+                        results = {
+                            "title": p.get("title"),
+                            "episodes": len(p.get("episodes", [])),
+                            "rating": p.get("averageRating"),
+                            "vibe": p.get("vibe"),
+                            "genres": p.get("appleGenres"),
+                            "hook": p.get("narrativeHook")
+                        }
+                    else:
+                        results = {"error": f"Show '{title}' not found."}
+                else:
+                    results = store.search(message)
+                
+            elif intent == "clip":
+                keyword = params.get("keyword", message)
+                results = []
+                kw = keyword.lower()
+                for item in store.episodes_index:
+                    segs = [s for s in item.get("segments", []) if kw in s.get("text", "").lower()]
+                    if segs:
+                        results.append({
+                            "podcast_title": item["podcast_title"],
+                            "episode_title": item["title"],
+                            "audio_url": item.get("audio_url", ""),
+                            "clips": segs[:3]
+                        })
+                    if len(results) >= 3:
+                        break
+                
+            elif intent == "similar":
+                collection = _get_vector_collection()
+                if collection and collection.count() > 0:
+                    # Use the last recommendation or search result as seed
+                    seed_text = params.get("keyword", message)
+                    results = await semantic_search(session, collection, seed_text, top_k=5)
+                else:
+                    results = store.search(message)
+                
+            # 3. Format response
+            response_text = await format_conversational_response(session, intent, results, hint)
+                
+            # 4. Store in conversation history
+            history.append({"role": "user", "content": message})
+            history.append({"role": "assistant", "content": response_text})
+                
+            # Keep history manageable
+            if len(history) > 20:
+                _conversations[session_id] = history[-10:]
+                
+            return json.dumps({
+                "response": response_text,
+                "intent": intent,
+                "results": results if isinstance(results, list) else [results],
+                "session_id": session_id
+            }, indent=2, default=str)
+    
+    return await _process()
+    
+    
+@mcp.tool()
+def list_shows(genre: Optional[str] = None, min_rating: Optional[float] = None, popular_only: bool = False) -> Any:
+    """
+    List shows with optional filters.
+    Args:
+        genre: Filter by Apple genre (e.g. "Science", "Society & Culture")
+        min_rating: Minimum average rating (e.g. 4.0)
+        popular_only: Only return shows marked as popular
+    """
+    results = []
+    for p in store.podcasts.values():
+        if popular_only and not p.get("isPopular"):
+            continue
+        if min_rating and (p.get("averageRating") or 0) < min_rating:
+            continue
+        if genre:
+            genres = [g.lower() for g in (p.get("appleGenres") or [])]
+            if genre.lower() not in genres:
+                continue
             
-        # Find the episode
-        ep = None
-        for e in pod.episodes:
-            if e.title.lower() == episode_title.lower():
-                ep = e
-                break
+        results.append({
+            "title": p.get("title"),
+            "rating": p.get("averageRating"),
+            "genres": p.get("appleGenres"),
+            "hook": p.get("narrativeHook"),
+            "episodes": len(p.get("episodes", []))
+        })
         
-        if not ep:
-            return f"Episode '{episode_title}' in '{podcast_title}' not found."
-            
-        # Create the timeline item
-        item = TimelineItem(
-            title=title,
-            type=item_type.upper(),
-            startTime=start,
-            endTime=end,
-            link=link,
-            metadata=metadata or {}
-        )
-        
-        # Initialize timeline if needed (though Pydantic Field factory handles this)
-        if not hasattr(ep, 'timeline'):
-            ep.timeline = []
-            
-        ep.timeline.append(item)
-        
-        # Sort timeline by start time
-        ep.timeline.sort(key=lambda x: x.start_time)
-        
-        return f"Successfully injected {item_type} marker '{title}' at {start}s into '{episode_title}'."
-
-    @mcp.tool()
-    async def chat(message: str, session_id: str = "default") -> Any:
-        """
-        Conversational entry point. Send a natural language message and get back
-        podcast recommendations, search results, or answers to queries.
-        Supports multi-turn context via session_id.
-        """
-        # Get or create conversation history
-        if session_id not in _conversations:
-            _conversations[session_id] = []
-        history = _conversations[session_id]
+    results.sort(key=lambda x: x.get("rating") or 0, reverse=True)
+    return json.dumps(results[:20], indent=2)
     
-        async def _process():
+    
+@mcp.tool()
+def show_stats(title: str) -> Any:
+    """
+    Get detailed statistics for a specific show.
+    Returns episode count, average duration, vibe summary, and audience info.
+    """
+    p = store.get_details(title)
+    if not p:
+        return f"Show '{title}' not found."
+        
+    episodes = p.get("episodes", [])
+    durations = [int(ep.get("duration", 0)) for ep in episodes if ep.get("duration")]
+    avg_duration = sum(durations) / max(len(durations), 1)
+        
+    return json.dumps({
+        "title": p.get("title"),
+        "episode_count": len(episodes),
+        "average_duration_minutes": round(avg_duration / 60, 1),
+        "rating": p.get("averageRating"),
+        "rating_count": p.get("ratingCount"),
+        "vibe": p.get("vibe"),
+        "target_audience": p.get("targetAudience"),
+        "recommendation_scenarios": p.get("recommendationScenarios"),
+        "is_popular": p.get("isPopular"),
+        "genres": p.get("appleGenres"),
+        "hook": p.get("narrativeHook")
+    }, indent=2)
+    
+    
+@mcp.tool()
+    
+async def semantic_search_episodes(query: str, top_k: int = 5) -> Any:
+    """
+    Semantic search across all indexed episode transcripts and descriptions.
+    Uses vector embeddings for meaning-based matching, not just keywords.
+    Requires the vector store to be indexed first.
+    """
+    collection = _get_vector_collection()
+    if not collection or collection.count() == 0:
+        return "Vector store is empty. Run the pipeline with --ai-enrich to index episodes."
+        
+    async def _search():
+        try:
             ssl_context = ssl.create_default_context(cafile=certifi.where())
             connector = aiohttp.TCPConnector(ssl=ssl_context)
             async with aiohttp.ClientSession(connector=connector) as session:
-                # 1. Classify intent
-                intent_data = await classify_intent(session, message, history)
-                intent = intent_data.get("intent", "search")
-                params = intent_data.get("params", {})
-                hint = intent_data.get("response_hint", "")
-    
-                # 2. Dispatch to engine
-                results = []
-                
-                if intent == "recommend":
-                    results = recommend(
-                        store.podcasts,
-                        interests=params.get("interests"),
-                        scenario=params.get("scenario"),
-                        tone=params.get("tone"),
-                        pace=params.get("pace"),
-                        max_complexity=params.get("max_complexity"),
-                        genres=params.get("genres"),
-                        top_k=5
-                    )
-                
-                elif intent == "search":
-                    keyword = params.get("keyword", message)
-                    # Try semantic search first
-                    collection = _get_vector_collection()
-                    if collection and collection.count() > 0:
-                        results = await semantic_search(session, collection, keyword, top_k=5)
-                    else:
-                        # Fallback to keyword search
-                        results = store.search(keyword)
-                
-                elif intent == "query":
-                    title = params.get("podcast_title", "")
-                    if title:
-                        p = store.get_details(title)
-                        if p:
-                            results = {
-                                "title": p.get("title"),
-                                "episodes": len(p.get("episodes", [])),
-                                "rating": p.get("averageRating"),
-                                "vibe": p.get("vibe"),
-                                "genres": p.get("appleGenres"),
-                                "hook": p.get("narrativeHook")
-                            }
-                        else:
-                            results = {"error": f"Show '{title}' not found."}
-                    else:
-                        results = store.search(message)
-                
-                elif intent == "clip":
-                    keyword = params.get("keyword", message)
-                    results = []
-                    kw = keyword.lower()
-                    for item in store.episodes_index:
-                        segs = [s for s in item.get("segments", []) if kw in s.get("text", "").lower()]
-                        if segs:
-                            results.append({
-                                "podcast_title": item["podcast_title"],
-                                "episode_title": item["title"],
-                                "audio_url": item.get("audio_url", ""),
-                                "clips": segs[:3]
-                            })
-                        if len(results) >= 3:
-                            break
-                
-                elif intent == "similar":
-                    collection = _get_vector_collection()
-                    if collection and collection.count() > 0:
-                        # Use the last recommendation or search result as seed
-                        seed_text = params.get("keyword", message)
-                        results = await semantic_search(session, collection, seed_text, top_k=5)
-                    else:
-                        results = store.search(message)
-                
-                # 3. Format response
-                response_text = await format_conversational_response(session, intent, results, hint)
-                
-                # 4. Store in conversation history
-                history.append({"role": "user", "content": message})
-                history.append({"role": "assistant", "content": response_text})
-                
-                # Keep history manageable
-                if len(history) > 20:
-                    _conversations[session_id] = history[-10:]
-                
-                return json.dumps({
-                    "response": response_text,
-                    "intent": intent,
-                    "results": results if isinstance(results, list) else [results],
-                    "session_id": session_id
-                }, indent=2, default=str)
-    
-        return await _process()
-    
-    
-    @mcp.tool()
-    def list_shows(genre: Optional[str] = None, min_rating: Optional[float] = None, popular_only: bool = False) -> Any:
-        """
-        List shows with optional filters.
-        Args:
-            genre: Filter by Apple genre (e.g. "Science", "Society & Culture")
-            min_rating: Minimum average rating (e.g. 4.0)
-            popular_only: Only return shows marked as popular
-        """
-        results = []
-        for p in store.podcasts.values():
-            if popular_only and not p.get("isPopular"):
-                continue
-            if min_rating and (p.get("averageRating") or 0) < min_rating:
-                continue
-            if genre:
-                genres = [g.lower() for g in (p.get("appleGenres") or [])]
-                if genre.lower() not in genres:
-                    continue
-            
-            results.append({
-                "title": p.get("title"),
-                "rating": p.get("averageRating"),
-                "genres": p.get("appleGenres"),
-                "hook": p.get("narrativeHook"),
-                "episodes": len(p.get("episodes", []))
-            })
+                results = await semantic_search(session, collection, query, top_k=top_k)
+                if not results:
+                    return f"No semantic matches found for '{query}'. Try a simpler keyword search."
+                return results
+        except Exception as e:
+            return f"Semantic search failed: {e}. Ensure Ollama is running with 'nomic-embed-text'."
         
-        results.sort(key=lambda x: x.get("rating") or 0, reverse=True)
-        return json.dumps(results[:20], indent=2)
+    return await _search()
     
     
+    
+    
+    
+    
+# --- Phase 17: Audio Clip Extraction Tools ---
+    
+from .clipper import extract_clip
+    
+    
+@mcp.tool()
+    
+async def extract_audio_clip(podcast_title: str, episode_title: str, start_seconds: float, end_seconds: float) -> Any:
+    """
+    Extract an audio clip from a podcast episode between the given timestamps.
+    Returns the path to the generated MP3 file.
+    Use get_episode_chapters, get_episode_highlights, or search_transcripts to find timestamps first.
+    """
+    p = store.get_details(podcast_title)
+    if not p:
+        return f"Podcast '{podcast_title}' not found."
+    
+    episode = None
+    for ep in p.get("episodes", []):
+        if ep.get("title", "").lower() == episode_title.lower():
+            episode = ep
+            break
+    
+    if not episode:
+        # Try partial match
+        for ep in p.get("episodes", []):
+            if episode_title.lower() in ep.get("title", "").lower():
+                episode = ep
+                break
+    
+    if not episode:
+        return f"Episode '{episode_title}' not found in '{podcast_title}'."
+    
+    audio_url = episode.get("audioUrl")
+    if not audio_url:
+        return f"No audio URL available for '{episode_title}'. Run with --deep-crawl first."
+    
+    async def _extract():
+        return await extract_clip(
+            audio_url=audio_url,
+            start_seconds=start_seconds,
+            end_seconds=end_seconds,
+            podcast_title=podcast_title,
+            episode_title=episode.get("title", episode_title),
+        )
+    
+    try:
+        path = await _extract()
+        duration = end_seconds - start_seconds
+        return json.dumps({
+            "status": "success",
+            "clip_path": path,
+            "duration_seconds": round(duration, 1),
+            "source_episode": episode.get("title"),
+            "source_podcast": podcast_title,
+            "time_range": f"{start_seconds:.1f}s - {end_seconds:.1f}s"
+        }, indent=2)
+    except Exception as e:
+        return f"Failed to extract clip: {e}"
+
+# --- Phase 18: Semantic Audio Extraction Suite ---
+    
+from .clipper import stitch_clips, generate_audiogram as _generate_audiogram
+from .ai_enricher import (
+    find_topic_segments, detect_emotional_peaks, detect_disagreements,
+    detect_data_claims, generate_summary_points, identify_qa_pairs,
+)
+    
+    
+def _find_episode(podcast_title: str, episode_title: str):
+    """Helper: find podcast dict and episode dict by title (partial match)."""
+    p = store.get_details(podcast_title)
+    if not p:
+        return None, None, f"Podcast '{podcast_title}' not found."
+    for ep in p.get("episodes", []):
+        if episode_title.lower() in ep.get("title", "").lower():
+            return p, ep, None
+    return p, None, f"Episode '{episode_title}' not found in '{podcast_title}'."
+    
+    
+def _get_segments(episode):
+    """Get segments list from episode dict."""
+    return episode.get("segments", [])
+    
+    
+def _require_audio(episode):
+    """Check episode has an audio URL."""
+    url = episode.get("audioUrl")
+    if not url:
+        return None, "No audio URL. Run with --deep-crawl first."
+    return url, None
+    
+    
+# --- A: Speaker-Centric ---
+    
+@mcp.tool()
+    
+async def extract_speaker_reel(podcast_title: str, episode_title: str, speaker_name: str) -> Any:
+    """
+    Extract all segments where a specific speaker talks, stitched into one clip.
+    Great for creating a 'soundbite reel' of a guest or host.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments. Run with --transcribe first."
+    
+    # Find all segments for this speaker
+    ranges = []
+    for seg in segments:
+        s_name = seg.get("speaker", "")
+        if s_name and speaker_name.lower() in s_name.lower():
+            ranges.append((seg.get("start", 0), seg.get("end", 0)))
+    
+    if not ranges:
+        speakers = list(set(s.get("speaker", "?") for s in segments if s.get("speaker")))
+        return f"Speaker '{speaker_name}' not found. Available: {speakers}"
+    
+    try:
+        path = asyncio.run(stitch_clips(
+            audio_url, ranges, label=f"reel_{speaker_name}"
+        ))
+        return json.dumps({
+            "status": "success", "clip_path": path,
+            "speaker": speaker_name, "segment_count": len(ranges),
+            "total_seconds": round(sum(e - s for s, e in ranges), 1)
+        }, indent=2)
+    except Exception as e:
+        return f"Failed: {e}"
+    
+    
+@mcp.tool()
+    
+async def extract_dialogue(podcast_title: str, episode_title: str, speaker_a: str, speaker_b: str) -> Any:
+    """
+    Extract the back-and-forth between two speakers, removing all other speakers.
+    Perfect for isolating a debate or interview exchange.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    ranges = []
+    for seg in segments:
+        s_name = (seg.get("speaker") or "").lower()
+        if speaker_a.lower() in s_name or speaker_b.lower() in s_name:
+            ranges.append((seg.get("start", 0), seg.get("end", 0)))
+    
+    if not ranges:
+        return f"No dialogue found between '{speaker_a}' and '{speaker_b}'."
+    
+    try:
+        path = asyncio.run(stitch_clips(
+            audio_url, ranges, label=f"dialogue_{speaker_a}_{speaker_b}"
+        ))
+        return json.dumps({
+            "status": "success", "clip_path": path,
+            "speakers": [speaker_a, speaker_b], "segment_count": len(ranges)
+        }, indent=2)
+    except Exception as e:
+        return f"Failed: {e}"
+    
+    
+@mcp.tool()
+def extract_speaker_intro(podcast_title: str, episode_title: str, guest_name: str) -> Any:
+    """
+    Find and clip the moment a guest is introduced (typically first appearance + context).
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    # Find first mention of guest name in segment text
+    intro_start = None
+    for seg in segments:
+        text = (seg.get("text") or "").lower()
+        if guest_name.lower() in text:
+            intro_start = max(0, seg.get("start", 0) - 10)
+            intro_end = min(seg.get("end", 0) + 60, segments[-1].get("end", 300))
+            break
+    
+    if intro_start is None:
+        return f"'{guest_name}' not mentioned in transcript segments."
+    
+    return extract_audio_clip(podcast_title, ep.get("title"), intro_start, intro_end)
+    
+    
+# --- B: Topic & Entity ---
+    
+@mcp.tool()
+    
+async def extract_topic_segment(podcast_title: str, episode_title: str, topic: str) -> Any:
+    """
+    Find and extract all segments discussing a specific topic (semantic, not keyword).
+    Args: topic e.g. "climate policy", "housing affordability"
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    async def _process():
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            results = await find_topic_segments(session, segments, topic)
+            if not results:
+                return json.dumps({"status": "not_found", "message": f"Topic '{topic}' not discussed."})
+    
+            ranges = [(r["startTime"], r["endTime"]) for r in results]
+            path = await stitch_clips(audio_url, ranges, label=f"topic_{topic}")
+            return json.dumps({
+                "status": "success", "clip_path": path, "topic": topic,
+                "segments": results, "segment_count": len(results)
+            }, indent=2, default=str)
+    
+    return await _process()
+    
+    
+@mcp.tool()
+async def extract_entity_mentions(podcast_title: str, episode_title: str, entity: str) -> Any:
+    """
+    Extract every mention of a person, place, or organization.
+    Uses text search on transcript segments with five-second padding.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    # Text search with padding
+    ranges = []
+    mentions = []
+    for seg in segments:
+        text = seg.get("text", "")
+        if entity.lower() in text.lower():
+            start = max(0, seg.get("start", 0) - 3)
+            end = seg.get("end", 0) + 3
+            ranges.append((start, end))
+            mentions.append({"text": text, "start": seg.get("start"), "end": seg.get("end")})
+    
+    if not ranges:
+        return f"'{entity}' not mentioned in this episode."
+    
+    try:
+        path = await stitch_clips(audio_url, ranges, label=f"mentions_{entity}")
+        return json.dumps({
+            "status": "success", "clip_path": path, "entity": entity,
+            "mention_count": len(mentions), "mentions": mentions
+        }, indent=2, default=str)
+    except Exception as e:
+        return f"Failed: {e}"
+    
+    
+@mcp.tool()
+    
+async def extract_question_answers(podcast_title: str, episode_title: str) -> Any:
+    """
+    Identify Q&A pairs in interviews, each extractable as a standalone clip.
+    Returns list of questions with answers and option to extract clips.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    async def _process():
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            qa_pairs = await identify_qa_pairs(session, segments)
+            if not qa_pairs:
+                return json.dumps({"status": "not_interview", "message": "No Q&A pairs detected."})
+            return json.dumps({
+                "status": "success", "qa_count": len(qa_pairs), "pairs": qa_pairs,
+                "tip": "Use extract_audio_clip with startTime/endTime to clip any Q&A pair."
+            }, indent=2, default=str)
+    
+    return await _process()
+    
+    
+# --- C: Social & Sharing ---
+    
+@mcp.tool()
+    
+async def create_audiogram(
+    podcast_title: str,
+    episode_title: str,
+    start_seconds: float,
+    end_seconds: float,
+    image_path: str = None
+) -> Any:
+    """
+    Create a shareable audiogram video (MP4) with waveform visualization and captions.
+    Optional image_path for a premium background with Ken Burns effect.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    # Get captions from segments in the time range
+    segments = _get_segments(ep)
+    captions = [s for s in segments
+                if s.get("start", 0) >= start_seconds and s.get("end", 0) <= end_seconds]
+    
+    title = f"{podcast_title} - {ep.get('title', '')}"[:80]
+    
+    try:
+        path = asyncio.run(_generate_audiogram(
+            audio_url, start_seconds, end_seconds,
+            captions=captions, title=title,
+            image_path=image_path
+        ))
+        return json.dumps({
+            "status": "success", "audiogram_path": path,
+            "format": "MP4", "dimensions": "1080x1080",
+            "duration_seconds": round(end_seconds - start_seconds, 1),
+            "premium": bool(image_path)
+        }, indent=2)
+    except Exception as e:
+        return f"Failed to create audiogram: {e}"
+    
+    
+@mcp.tool()
+def extract_quote_clip(podcast_title: str, episode_title: str, quote_text: str) -> Any:
+    """
+    Find an exact or approximate text quote in the transcript and extract the audio.
+    Useful when you read a quote and want to hear how it was actually said.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    # Fuzzy search: find segment with best overlap
+    query_words = set(quote_text.lower().split())
+    best_seg = None
+    best_score = 0
+    
+    for seg in segments:
+        text_words = set(seg.get("text", "").lower().split())
+        overlap = len(query_words & text_words) / max(len(query_words), 1)
+        if overlap > best_score:
+            best_score = overlap
+            best_seg = seg
+    
+    if not best_seg or best_score < 0.3:
+        return f"Quote not found in transcript. Best match score: {best_score:.0%}"
+    
+    start = max(0, best_seg.get("start", 0) - 2)
+    end = best_seg.get("end", 0) + 2
+    
+    result = extract_audio_clip(podcast_title, ep.get("title"), start, end)
+    return json.dumps({
+        "match_score": f"{best_score:.0%}",
+        "matched_text": best_seg.get("text", ""),
+        "speaker": best_seg.get("speaker", "Unknown"),
+        "clip_result": json.loads(result) if result.startswith("{") else result
+    }, indent=2)
+    
+    
+@mcp.tool()
+def extract_cold_open(podcast_title: str, episode_title: str) -> Any:
+    """
+    Extract the 'hook' - the teaser moment in the first 2-3 minutes.
+    Great for marketing clips that make people want to subscribe.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    # The cold open is typically the first 60-120 seconds
+    cold_end = min(120.0, segments[-1].get("end", 120) if segments else 120)
+    
+    return extract_audio_clip(podcast_title, ep.get("title"), 0, cold_end)
+    
+    
+# --- D: Research & Analysis ---
+    
+@mcp.tool()
+    
+async def extract_emotional_peaks(podcast_title: str, episode_title: str, emotion: Optional[str] = None) -> Any:
+    """
+    Detect emotionally charged moments in the conversation.
+    Optional emotion filter: 'anger', 'joy', 'surprise', 'sadness', 'passion'.
+    Returns highlights with timestamps for clipping.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    async def _process():
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            peaks = await detect_emotional_peaks(session, segments, emotion)
+            if not peaks:
+                return json.dumps({"status": "none_found", "message": "No emotional peaks detected."})
+            return json.dumps({
+                "status": "success", "peaks": peaks,
+                "tip": "Use extract_audio_clip with startTime/endTime to clip any peak."
+            }, indent=2, default=str)
+    
+    return await _process()
+    
+    
+@mcp.tool()
+    
+async def extract_disagreements(podcast_title: str, episode_title: str) -> Any:
+    """
+    Find moments where speakers contradict or challenge each other.
+    Useful for fact-checking, debate analysis, and research.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    async def _process():
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            disagreements = await detect_disagreements(session, segments)
+            if not disagreements:
+                return json.dumps({"status": "none_found", "message": "No disagreements detected."})
+            return json.dumps({
+                "status": "success", "disagreements": disagreements,
+                "tip": "Use extract_audio_clip to clip any disagreement."
+            }, indent=2, default=str)
+    
+    return await _process()
+    
+    
+@mcp.tool()
+def compare_perspectives(topic: str, top_k: int = 5) -> Any:
+    """
+    Cross-episode: find different speakers' takes on the same topic.
+    Searches across all episodes in the catalogue.
+    """
+    results = []
+    for title, podcast in store.podcasts.items():
+        for ep in podcast.get("episodes", []):
+            segments = ep.get("segments", [])
+            if not segments:
+                continue
+            # Quick text scan for topic mention
+            for seg in segments:
+                if topic.lower() in (seg.get("text", "")).lower():
+                    results.append({
+                        "podcast": title,
+                        "episode": ep.get("title"),
+                        "speaker": seg.get("speaker", "Unknown"),
+                        "text": seg.get("text", ""),
+                        "startTime": seg.get("start"),
+                        "endTime": seg.get("end"),
+                    })
+                    break  # One per episode
+    
+    if not results:
+        return f"Topic '{topic}' not mentioned in any transcribed episode."
+    
+    return json.dumps({
+        "status": "success", "topic": topic,
+        "perspectives": results[:top_k],
+        "tip": "Use extract_audio_clip on any perspective to hear the original audio."
+    }, indent=2, default=str)
+    
+    
+@mcp.tool()
+    
+async def extract_data_claims(podcast_title: str, episode_title: str) -> Any:
+    """
+    Find moments where speakers cite statistics, studies, or specific numbers.
+    Useful for fact-checking and research verification.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    async def _process():
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            claims = await detect_data_claims(session, segments)
+            if not claims:
+                return json.dumps({"status": "none_found", "message": "No data claims detected."})
+            return json.dumps({
+                "status": "success", "claims": claims,
+                "tip": "Use extract_audio_clip to clip any claim for verification."
+            }, indent=2, default=str)
+    
+    return await _process()
+    
+    
+@mcp.tool()
+    
+async def extract_summary_clip(podcast_title: str, episode_title: str, max_duration: int = 120) -> Any:
+    """
+    Create a 2-minute executive summary by stitching together key points.
+    Perfect for busy people who want the gist of a long episode.
+    """
+    _, ep, err = _find_episode(podcast_title, episode_title)
+    if err:
+        return err
+    audio_url, err = _require_audio(ep)
+    if err:
+        return err
+    
+    segments = _get_segments(ep)
+    if not segments:
+        return "No transcript segments."
+    
+    async def _process():
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            points = await generate_summary_points(session, segments)
+            if not points:
+                return json.dumps({"status": "failed", "message": "Could not generate summary points."})
+    
+            # Trim to max_duration
+            ranges = []
+            total = 0
+            for pt in points:
+                dur = pt["endTime"] - pt["startTime"]
+                if total + dur > max_duration:
+                    break
+                ranges.append((pt["startTime"], pt["endTime"]))
+                total += dur
+    
+            if not ranges:
+                return json.dumps({"status": "failed", "message": "Summary points too short."})
+    
+            path = await stitch_clips(audio_url, ranges, label=f"summary_{episode_title}")
+            return json.dumps({
+                "status": "success", "clip_path": path,
+                "key_points": points[:len(ranges)],
+                "duration_seconds": round(total, 1)
+            }, indent=2, default=str)
+
+    return await _process()
+
+# --- Legacy / Specialist Tools ---
+# These tools are subsumed by the core tools above but kept for specialized workflows.
+# They are only registered when GOLDMINE_LEGACY_TOOLS=1 is set.
+    
+if os.environ.get("GOLDMINE_LEGACY_TOOLS", "0") == "1":
+        
     @mcp.tool()
-    def show_stats(title: str) -> Any:
+    def export_universal_catalogue() -> Any:
         """
-        Get detailed statistics for a specific show.
-        Returns episode count, average duration, vibe summary, and audience info.
+        Export the full podcast catalogue in a standardized, universal format (JSON-LD).
+        This graph format is optimized for generic Agent traversal and cross-platform indexing.
         """
+        all_podcasts = list(store.podcasts.values())
+        return json.dumps(all_podcasts, indent=2, ensure_ascii=False)
+        
+    @mcp.tool()
+    def get_podcast(title: str) -> Any:
+        """Get a single podcast entity uniformly by title."""
         p = store.get_details(title)
         if not p:
-            return f"Show '{title}' not found."
+            return f"Podcast '{title}' not found."
+        return json.dumps(p, indent=2, ensure_ascii=False)
         
-        episodes = p.get("episodes", [])
-        durations = [int(ep.get("duration", 0)) for ep in episodes if ep.get("duration")]
-        avg_duration = sum(durations) / max(len(durations), 1)
-        
-        return json.dumps({
-            "title": p.get("title"),
-            "episode_count": len(episodes),
-            "average_duration_minutes": round(avg_duration / 60, 1),
-            "rating": p.get("averageRating"),
-            "rating_count": p.get("ratingCount"),
-            "vibe": p.get("vibe"),
-            "target_audience": p.get("targetAudience"),
-            "recommendation_scenarios": p.get("recommendationScenarios"),
-            "is_popular": p.get("isPopular"),
-            "genres": p.get("appleGenres"),
-            "hook": p.get("narrativeHook")
-        }, indent=2)
-    
-    
     @mcp.tool()
-    
-    async def semantic_search_episodes(query: str, top_k: int = 5) -> Any:
+    async def generate_daily_briefing(limit: int = 5) -> Any:
         """
-        Semantic search across all indexed episode transcripts and descriptions.
-        Uses vector embeddings for meaning-based matching, not just keywords.
-        Requires the vector store to be indexed first.
+        Generates a daily editorial meta-summary synthesizing the latest narrative trends.
         """
-        collection = _get_vector_collection()
-        if not collection or collection.count() == 0:
-            return "Vector store is empty. Run the pipeline with --ai-enrich to index episodes."
-        
-        async def _search():
-            try:
-                ssl_context = ssl.create_default_context(cafile=certifi.where())
-                connector = aiohttp.TCPConnector(ssl=ssl_context)
-                async with aiohttp.ClientSession(connector=connector) as session:
-                    results = await semantic_search(session, collection, query, top_k=top_k)
-                    if not results:
-                        return f"No semantic matches found for '{query}'. Try a simpler keyword search."
-                    return results
-            except Exception as e:
-                return f"Semantic search failed: {e}. Ensure Ollama is running with 'nomic-embed-text'."
-        
-        return await _search()
-    
-    
-    
-    
-    
-    
-    # --- Phase 17: Audio Clip Extraction Tools ---
-    
-    from .clipper import extract_clip
-    
-    
-    @mcp.tool()
-    
-    async def extract_audio_clip(podcast_title: str, episode_title: str, start_seconds: float, end_seconds: float) -> Any:
-        """
-        Extract an audio clip from a podcast episode between the given timestamps.
-        Returns the path to the generated MP3 file.
-        Use get_episode_chapters, get_episode_highlights, or search_transcripts to find timestamps first.
-        """
-        p = store.get_details(podcast_title)
-        if not p:
-            return f"Podcast '{podcast_title}' not found."
-    
-        episode = None
-        for ep in p.get("episodes", []):
-            if ep.get("title", "").lower() == episode_title.lower():
-                episode = ep
-                break
-    
-        if not episode:
-            # Try partial match
-            for ep in p.get("episodes", []):
-                if episode_title.lower() in ep.get("title", "").lower():
-                    episode = ep
-                    break
-    
-        if not episode:
-            return f"Episode '{episode_title}' not found in '{podcast_title}'."
-    
-        audio_url = episode.get("audioUrl")
-        if not audio_url:
-            return f"No audio URL available for '{episode_title}'. Run with --deep-crawl first."
-    
-        async def _extract():
-            return await extract_clip(
-                audio_url=audio_url,
-                start_seconds=start_seconds,
-                end_seconds=end_seconds,
-                podcast_title=podcast_title,
-                episode_title=episode.get("title", episode_title),
-            )
-    
-        try:
-            path = await _extract()
-            duration = end_seconds - start_seconds
-            return json.dumps({
-                "status": "success",
-                "clip_path": path,
-                "duration_seconds": round(duration, 1),
-                "source_episode": episode.get("title"),
-                "source_podcast": podcast_title,
-                "time_range": f"{start_seconds:.1f}s - {end_seconds:.1f}s"
-            }, indent=2)
-        except Exception as e:
-            return f"Failed to extract clip: {e}"
-    
-    
-        p = store.get_details(podcast_title)
-        if not p:
-            return f"Podcast '{podcast_title}' not found."
-    
-        episode = None
-        for ep in p.get("episodes", []):
-            if episode_title.lower() in ep.get("title", "").lower():
-                episode = ep
-                break
-    
-        if not episode:
-            return f"Episode '{episode_title}' not found."
-    
-        highlights = episode.get("highlights", [])
-        if not highlights:
-            return f"No highlights found for '{episode_title}'. Run with --ai-enrich and --transcribe first."
-    
-        return json.dumps({
-            "episode": episode.get("title"),
-            "podcast": podcast_title,
-            "highlights": highlights,
-            "tip": "Use extract_audio_clip with the startTime and endTime to get an audio clip."
-        }, indent=2)
-    
-    
-    # --- Phase 18: Semantic Audio Extraction Suite ---
-    
-    from .clipper import stitch_clips, generate_audiogram as _generate_audiogram
-    from .ai_enricher import (
-        find_topic_segments, detect_emotional_peaks, detect_disagreements,
-        detect_data_claims, generate_summary_points, identify_qa_pairs,
-    )
-    
-    
-    def _find_episode(podcast_title: str, episode_title: str):
-        """Helper: find podcast dict and episode dict by title (partial match)."""
-        p = store.get_details(podcast_title)
-        if not p:
-            return None, None, f"Podcast '{podcast_title}' not found."
-        for ep in p.get("episodes", []):
-            if episode_title.lower() in ep.get("title", "").lower():
-                return p, ep, None
-        return p, None, f"Episode '{episode_title}' not found in '{podcast_title}'."
-    
-    
-    def _get_segments(episode):
-        """Get segments list from episode dict."""
-        return episode.get("segments", [])
-    
-    
-    def _require_audio(episode):
-        """Check episode has an audio URL."""
-        url = episode.get("audioUrl")
-        if not url:
-            return None, "No audio URL. Run with --deep-crawl first."
-        return url, None
-    
-    
-    # --- A: Speaker-Centric ---
-    
-    @mcp.tool()
-    
-    async def extract_speaker_reel(podcast_title: str, episode_title: str, speaker_name: str) -> Any:
-        """
-        Extract all segments where a specific speaker talks, stitched into one clip.
-        Great for creating a 'soundbite reel' of a guest or host.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments. Run with --transcribe first."
-    
-        # Find all segments for this speaker
-        ranges = []
-        for seg in segments:
-            s_name = seg.get("speaker", "")
-            if s_name and speaker_name.lower() in s_name.lower():
-                ranges.append((seg.get("start", 0), seg.get("end", 0)))
-    
-        if not ranges:
-            speakers = list(set(s.get("speaker", "?") for s in segments if s.get("speaker")))
-            return f"Speaker '{speaker_name}' not found. Available: {speakers}"
-    
-        try:
-            path = asyncio.run(stitch_clips(
-                audio_url, ranges, label=f"reel_{speaker_name}"
-            ))
-            return json.dumps({
-                "status": "success", "clip_path": path,
-                "speaker": speaker_name, "segment_count": len(ranges),
-                "total_seconds": round(sum(e - s for s, e in ranges), 1)
-            }, indent=2)
-        except Exception as e:
-            return f"Failed: {e}"
-    
-    
-    @mcp.tool()
-    
-    async def extract_dialogue(podcast_title: str, episode_title: str, speaker_a: str, speaker_b: str) -> Any:
-        """
-        Extract the back-and-forth between two speakers, removing all other speakers.
-        Perfect for isolating a debate or interview exchange.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        ranges = []
-        for seg in segments:
-            s_name = (seg.get("speaker") or "").lower()
-            if speaker_a.lower() in s_name or speaker_b.lower() in s_name:
-                ranges.append((seg.get("start", 0), seg.get("end", 0)))
-    
-        if not ranges:
-            return f"No dialogue found between '{speaker_a}' and '{speaker_b}'."
-    
-        try:
-            path = asyncio.run(stitch_clips(
-                audio_url, ranges, label=f"dialogue_{speaker_a}_{speaker_b}"
-            ))
-            return json.dumps({
-                "status": "success", "clip_path": path,
-                "speakers": [speaker_a, speaker_b], "segment_count": len(ranges)
-            }, indent=2)
-        except Exception as e:
-            return f"Failed: {e}"
-    
-    
-    @mcp.tool()
-    def extract_speaker_intro(podcast_title: str, episode_title: str, guest_name: str) -> Any:
-        """
-        Find and clip the moment a guest is introduced (typically first appearance + context).
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        # Find first mention of guest name in segment text
-        intro_start = None
-        for seg in segments:
-            text = (seg.get("text") or "").lower()
-            if guest_name.lower() in text:
-                intro_start = max(0, seg.get("start", 0) - 10)
-                intro_end = min(seg.get("end", 0) + 60, segments[-1].get("end", 300))
-                break
-    
-        if intro_start is None:
-            return f"'{guest_name}' not mentioned in transcript segments."
-    
-        return extract_audio_clip(podcast_title, ep.get("title"), intro_start, intro_end)
-    
-    
-    # --- B: Topic & Entity ---
-    
-    @mcp.tool()
-    
-    async def extract_topic_segment(podcast_title: str, episode_title: str, topic: str) -> Any:
-        """
-        Find and extract all segments discussing a specific topic (semantic, not keyword).
-        Args: topic e.g. "climate policy", "housing affordability"
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        async def _process():
-            ssl_context = ssl.create_default_context(cafile=certifi.where())
-            connector = aiohttp.TCPConnector(ssl=ssl_context)
-            async with aiohttp.ClientSession(connector=connector) as session:
-                results = await find_topic_segments(session, segments, topic)
-                if not results:
-                    return json.dumps({"status": "not_found", "message": f"Topic '{topic}' not discussed."})
-    
-                ranges = [(r["startTime"], r["endTime"]) for r in results]
-                path = await stitch_clips(audio_url, ranges, label=f"topic_{topic}")
-                return json.dumps({
-                    "status": "success", "clip_path": path, "topic": topic,
-                    "segments": results, "segment_count": len(results)
-                }, indent=2, default=str)
-    
-        return await _process()
-    
-    
-    @mcp.tool()
-    async def extract_entity_mentions(podcast_title: str, episode_title: str, entity: str) -> Any:
-        """
-        Extract every mention of a person, place, or organization.
-        Uses text search on transcript segments with five-second padding.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        # Text search with padding
-        ranges = []
-        mentions = []
-        for seg in segments:
-            text = seg.get("text", "")
-            if entity.lower() in text.lower():
-                start = max(0, seg.get("start", 0) - 3)
-                end = seg.get("end", 0) + 3
-                ranges.append((start, end))
-                mentions.append({"text": text, "start": seg.get("start"), "end": seg.get("end")})
-    
-        if not ranges:
-            return f"'{entity}' not mentioned in this episode."
-    
-        try:
-            path = await stitch_clips(audio_url, ranges, label=f"mentions_{entity}")
-            return json.dumps({
-                "status": "success", "clip_path": path, "entity": entity,
-                "mention_count": len(mentions), "mentions": mentions
-            }, indent=2, default=str)
-        except Exception as e:
-            return f"Failed: {e}"
-    
-    
-    @mcp.tool()
-    
-    async def extract_question_answers(podcast_title: str, episode_title: str) -> Any:
-        """
-        Identify Q&A pairs in interviews, each extractable as a standalone clip.
-        Returns list of questions with answers and option to extract clips.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        async def _process():
-            ssl_context = ssl.create_default_context(cafile=certifi.where())
-            connector = aiohttp.TCPConnector(ssl=ssl_context)
-            async with aiohttp.ClientSession(connector=connector) as session:
-                qa_pairs = await identify_qa_pairs(session, segments)
-                if not qa_pairs:
-                    return json.dumps({"status": "not_interview", "message": "No Q&A pairs detected."})
-                return json.dumps({
-                    "status": "success", "qa_count": len(qa_pairs), "pairs": qa_pairs,
-                    "tip": "Use extract_audio_clip with startTime/endTime to clip any Q&A pair."
-                }, indent=2, default=str)
-    
-        return await _process()
-    
-    
-    # --- C: Social & Sharing ---
-    
-    @mcp.tool()
-    
-    async def create_audiogram(
-        podcast_title: str,
-        episode_title: str,
-        start_seconds: float,
-        end_seconds: float,
-        image_path: str = None
-    ) -> Any:
-        """
-        Create a shareable audiogram video (MP4) with waveform visualization and captions.
-        Optional image_path for a premium background with Ken Burns effect.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        # Get captions from segments in the time range
-        segments = _get_segments(ep)
-        captions = [s for s in segments
-                    if s.get("start", 0) >= start_seconds and s.get("end", 0) <= end_seconds]
-    
-        title = f"{podcast_title} - {ep.get('title', '')}"[:80]
-    
-        try:
-            path = asyncio.run(_generate_audiogram(
-                audio_url, start_seconds, end_seconds,
-                captions=captions, title=title,
-                image_path=image_path
-            ))
-            return json.dumps({
-                "status": "success", "audiogram_path": path,
-                "format": "MP4", "dimensions": "1080x1080",
-                "duration_seconds": round(end_seconds - start_seconds, 1),
-                "premium": bool(image_path)
-            }, indent=2)
-        except Exception as e:
-            return f"Failed to create audiogram: {e}"
-    
-    
-    @mcp.tool()
-    def extract_quote_clip(podcast_title: str, episode_title: str, quote_text: str) -> Any:
-        """
-        Find an exact or approximate text quote in the transcript and extract the audio.
-        Useful when you read a quote and want to hear how it was actually said.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        # Fuzzy search: find segment with best overlap
-        query_words = set(quote_text.lower().split())
-        best_seg = None
-        best_score = 0
-    
-        for seg in segments:
-            text_words = set(seg.get("text", "").lower().split())
-            overlap = len(query_words & text_words) / max(len(query_words), 1)
-            if overlap > best_score:
-                best_score = overlap
-                best_seg = seg
-    
-        if not best_seg or best_score < 0.3:
-            return f"Quote not found in transcript. Best match score: {best_score:.0%}"
-    
-        start = max(0, best_seg.get("start", 0) - 2)
-        end = best_seg.get("end", 0) + 2
-    
-        result = extract_audio_clip(podcast_title, ep.get("title"), start, end)
-        return json.dumps({
-            "match_score": f"{best_score:.0%}",
-            "matched_text": best_seg.get("text", ""),
-            "speaker": best_seg.get("speaker", "Unknown"),
-            "clip_result": json.loads(result) if result.startswith("{") else result
-        }, indent=2)
-    
-    
-    @mcp.tool()
-    def extract_cold_open(podcast_title: str, episode_title: str) -> Any:
-        """
-        Extract the 'hook' - the teaser moment in the first 2-3 minutes.
-        Great for marketing clips that make people want to subscribe.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        # The cold open is typically the first 60-120 seconds
-        cold_end = min(120.0, segments[-1].get("end", 120) if segments else 120)
-    
-        return extract_audio_clip(podcast_title, ep.get("title"), 0, cold_end)
-    
-    
-    # --- D: Research & Analysis ---
-    
-    @mcp.tool()
-    
-    async def extract_emotional_peaks(podcast_title: str, episode_title: str, emotion: Optional[str] = None) -> Any:
-        """
-        Detect emotionally charged moments in the conversation.
-        Optional emotion filter: 'anger', 'joy', 'surprise', 'sadness', 'passion'.
-        Returns highlights with timestamps for clipping.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        async def _process():
-            ssl_context = ssl.create_default_context(cafile=certifi.where())
-            connector = aiohttp.TCPConnector(ssl=ssl_context)
-            async with aiohttp.ClientSession(connector=connector) as session:
-                peaks = await detect_emotional_peaks(session, segments, emotion)
-                if not peaks:
-                    return json.dumps({"status": "none_found", "message": "No emotional peaks detected."})
-                return json.dumps({
-                    "status": "success", "peaks": peaks,
-                    "tip": "Use extract_audio_clip with startTime/endTime to clip any peak."
-                }, indent=2, default=str)
-    
-        return await _process()
-    
-    
-    @mcp.tool()
-    
-    async def extract_disagreements(podcast_title: str, episode_title: str) -> Any:
-        """
-        Find moments where speakers contradict or challenge each other.
-        Useful for fact-checking, debate analysis, and research.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        async def _process():
-            ssl_context = ssl.create_default_context(cafile=certifi.where())
-            connector = aiohttp.TCPConnector(ssl=ssl_context)
-            async with aiohttp.ClientSession(connector=connector) as session:
-                disagreements = await detect_disagreements(session, segments)
-                if not disagreements:
-                    return json.dumps({"status": "none_found", "message": "No disagreements detected."})
-                return json.dumps({
-                    "status": "success", "disagreements": disagreements,
-                    "tip": "Use extract_audio_clip to clip any disagreement."
-                }, indent=2, default=str)
-    
-        return await _process()
-    
-    
-    @mcp.tool()
-    def compare_perspectives(topic: str, top_k: int = 5) -> Any:
-        """
-        Cross-episode: find different speakers' takes on the same topic.
-        Searches across all episodes in the catalogue.
-        """
-        results = []
-        for title, podcast in store.podcasts.items():
-            for ep in podcast.get("episodes", []):
-                segments = ep.get("segments", [])
-                if not segments:
-                    continue
-                # Quick text scan for topic mention
-                for seg in segments:
-                    if topic.lower() in (seg.get("text", "")).lower():
-                        results.append({
-                            "podcast": title,
-                            "episode": ep.get("title"),
-                            "speaker": seg.get("speaker", "Unknown"),
-                            "text": seg.get("text", ""),
-                            "startTime": seg.get("start"),
-                            "endTime": seg.get("end"),
-                        })
-                        break  # One per episode
-    
-        if not results:
-            return f"Topic '{topic}' not mentioned in any transcribed episode."
-    
-        return json.dumps({
-            "status": "success", "topic": topic,
-            "perspectives": results[:top_k],
-            "tip": "Use extract_audio_clip on any perspective to hear the original audio."
-        }, indent=2, default=str)
-    
-    
-    @mcp.tool()
-    
-    async def extract_data_claims(podcast_title: str, episode_title: str) -> Any:
-        """
-        Find moments where speakers cite statistics, studies, or specific numbers.
-        Useful for fact-checking and research verification.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        async def _process():
-            ssl_context = ssl.create_default_context(cafile=certifi.where())
-            connector = aiohttp.TCPConnector(ssl=ssl_context)
-            async with aiohttp.ClientSession(connector=connector) as session:
-                claims = await detect_data_claims(session, segments)
-                if not claims:
-                    return json.dumps({"status": "none_found", "message": "No data claims detected."})
-                return json.dumps({
-                    "status": "success", "claims": claims,
-                    "tip": "Use extract_audio_clip to clip any claim for verification."
-                }, indent=2, default=str)
-    
-        return await _process()
-    
-    
-    @mcp.tool()
-    
-    async def extract_summary_clip(podcast_title: str, episode_title: str, max_duration: int = 120) -> Any:
-        """
-        Create a 2-minute executive summary by stitching together key points.
-        Perfect for busy people who want the gist of a long episode.
-        """
-        _, ep, err = _find_episode(podcast_title, episode_title)
-        if err:
-            return err
-        audio_url, err = _require_audio(ep)
-        if err:
-            return err
-    
-        segments = _get_segments(ep)
-        if not segments:
-            return "No transcript segments."
-    
-        async def _process():
-            ssl_context = ssl.create_default_context(cafile=certifi.where())
-            connector = aiohttp.TCPConnector(ssl=ssl_context)
-            async with aiohttp.ClientSession(connector=connector) as session:
-                points = await generate_summary_points(session, segments)
-                if not points:
-                    return json.dumps({"status": "failed", "message": "Could not generate summary points."})
-    
-                # Trim to max_duration
-                ranges = []
-                total = 0
-                for pt in points:
-                    dur = pt["endTime"] - pt["startTime"]
-                    if total + dur > max_duration:
-                        break
-                    ranges.append((pt["startTime"], pt["endTime"]))
-                    total += dur
-    
-                if not ranges:
-                    return json.dumps({"status": "failed", "message": "Summary points too short."})
-    
-                path = await stitch_clips(audio_url, ranges, label=f"summary_{episode_title}")
-                return json.dumps({
-                    "status": "success", "clip_path": path,
-                    "key_points": points[:len(ranges)],
-                    "duration_seconds": round(total, 1)
-                }, indent=2, default=str)
-    
-        re
-    # --- Legacy / Specialist Tools ---
-    # These tools are subsumed by the core tools above but kept for specialized workflows.
-    # They are only registered when GOLDMINE_LEGACY_TOOLS=1 is set.
-    
-    if os.environ.get("GOLDMINE_LEGACY_TOOLS", "0") == "1":
-        
-        @mcp.tool()
-        def export_universal_catalogue() -> Any:
-            """
-            Export the full podcast catalogue in a standardized, universal format (JSON-LD).
-            This graph format is optimized for generic Agent traversal and cross-platform indexing.
-            """
-            all_podcasts = list(store.podcasts.values())
-            return json.dumps(all_podcasts, indent=2, ensure_ascii=False)
-        
-        @mcp.tool()
-        def get_podcast(title: str) -> Any:
-            """Get a single podcast entity uniformly by title."""
-            p = store.get_details(title)
-            if not p:
-                return f"Podcast '{title}' not found."
-            return json.dumps(p, indent=2, ensure_ascii=False)
-        
-        @mcp.tool()
-        async def generate_daily_briefing(limit: int = 5) -> Any:
-            """
-            Generates a daily editorial meta-summary synthesizing the latest narrative trends.
-            """
-            from .reporter_adapter import generate_editorial_report
-            all_podcasts = list(store.podcasts.values())
-            async with aiohttp.ClientSession() as session:
-                report = await generate_editorial_report(session, all_podcasts[:limit])
-                return report
+        from .reporter_adapter import generate_editorial_report
+        all_podcasts = list(store.podcasts.values())
+        async with aiohttp.ClientSession() as session:
+            report = await generate_editorial_report(session, all_podcasts[:limit])
+            return report
 
-        @mcp.tool()
-        async def find_narrative_shifts_legacy(topic: str) -> str:
-            """Tracks how a specific topic's rhetoric or tone has evolved recently."""
-            # Fallback to consolidated search
-            results = store.search(topic)
-            if not results:
-                return f"No narrative data found for topic: {topic}"
+    @mcp.tool()
+    async def find_narrative_shifts_legacy(topic: str) -> str:
+        """Tracks how a specific topic's rhetoric or tone has evolved recently."""
+        # Fallback to consolidated search
+        results = store.search(topic)
+        if not results:
+            return f"No narrative data found for topic: {topic}"
             
-            summary = f"Analysis of narrative shifts for '{topic}':\n\n"
-            for r in results[:5]:
-                vibe = r.get("vibe", {})
-                tone = vibe.get("tone", "Standard")
-                summary += f"- {r.get('podcast_title')}: {r.get('title')} | Tone: {tone}\n"
-                summary += f"  Hook: {r.get('hook', 'N/A')}\n"
-            return summary
+        summary = f"Analysis of narrative shifts for '{topic}':\n\n"
+        for r in results[:5]:
+            vibe = r.get("vibe", {})
+            tone = vibe.get("tone", "Standard")
+            summary += f"- {r.get('podcast_title')}: {r.get('title')} | Tone: {tone}\n"
+            summary += f"  Hook: {r.get('hook', 'N/A')}\n"
+        return summary
 
 if __name__ == "__main__":
     mcp.run()
