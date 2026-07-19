@@ -650,12 +650,3 @@ async def generate_deep_context_timeline(session, segments, title, ctx=None):
     engine = get_engine(ctx=ctx)
     return await engine.generate_deep_context_timeline(text, title)
 
-# Placeholder for additional legacy functions if needed
-async def identify_speakers(session, segments, title, description, ctx=None): return {}
-async def find_topic_segments(session, segments, topic, ctx=None): return []
-async def detect_emotional_peaks(session, segments, emotion=None, ctx=None): return []
-async def detect_disagreements(session, segments, ctx=None): return []
-async def detect_data_claims(session, segments, ctx=None): return []
-async def generate_summary_points(session, segments, max_points=7, ctx=None): return []
-async def identify_qa_pairs(session, segments, ctx=None): return []
-async def generate_image_prompt(session, segments, ctx=None): return None

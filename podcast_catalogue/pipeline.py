@@ -24,7 +24,6 @@ from .ai_enricher import (
     analyze_episode_description,
     analyze_episode_transcript,
     generate_chapters,
-    identify_speakers,
     extract_highlights,
 )
 from .vector_store import get_db_client, get_collection, index_episode
@@ -439,22 +438,6 @@ class TranscribeStage(Stage):
                     ep.audio_url, duration_limit=config.duration_limit
                 )
                 ep.transcript = transcript_text
-
-                # Speaker identification
-                if segments and any(s.get("speaker") for s in segments if isinstance(s, dict)):
-                    print(f"    🗣 Identifying speakers...")
-                    speaker_map = await identify_speakers(
-                        ctx.session, segments, ep.title,
-                        ep.description or podcast.description or ""
-                    )
-                    if speaker_map:
-                        print(f"       Map: {speaker_map}")
-                        for seg in segments:
-                            if isinstance(seg, dict) and seg.get("speaker"):
-                                s_label = seg["speaker"]
-                                if s_label in speaker_map:
-                                    seg["speaker"] = speaker_map[s_label]
-
                 ep.segments = [TranscriptSegment(**s) for s in segments]
                 print(f"    ✓ {len(transcript_text)} chars, {len(segments)} segments")
 

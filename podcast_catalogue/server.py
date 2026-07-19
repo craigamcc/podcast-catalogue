@@ -1455,12 +1455,8 @@ async def extract_audio_clip(podcast_title: str, episode_title: str, start_secon
         return f"Failed to extract clip: {e}"
 
 # --- Phase 18: Semantic Audio Extraction Suite ---
-    
+
 from .clipper import stitch_clips, generate_audiogram as _generate_audiogram
-from .ai_enricher import (
-    find_topic_segments, detect_emotional_peaks, detect_disagreements,
-    detect_data_claims, generate_summary_points, identify_qa_pairs,
-)
     
     
 def _find_episode(podcast_title: str, episode_title: str):
@@ -1623,43 +1619,7 @@ async def extract_speaker_intro(podcast_title: str, episode_title: str, guest_na
     
     
 # --- B: Topic & Entity ---
-    
-@mcp.tool()
-    
-async def extract_topic_segment(podcast_title: str, episode_title: str, topic: str) -> Any:
-    """
-    Find and extract all segments discussing a specific topic (semantic, not keyword).
-    Args: topic e.g. "climate policy", "housing affordability"
-    """
-    _, ep, err = _find_episode(podcast_title, episode_title)
-    if err:
-        return err
-    audio_url, err = _require_audio(ep)
-    if err:
-        return err
-    
-    segments = _get_segments(ep)
-    if not segments:
-        return "No transcript segments."
-    
-    async def _process():
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            results = await find_topic_segments(session, segments, topic)
-            if not results:
-                return json.dumps({"status": "not_found", "message": f"Topic '{topic}' not discussed."})
-    
-            ranges = [(r["startTime"], r["endTime"]) for r in results]
-            path = await stitch_clips(audio_url, ranges, label=f"topic_{topic}")
-            return json.dumps({
-                "status": "success", "clip_path": path, "topic": topic,
-                "segments": results, "segment_count": len(results)
-            }, indent=2, default=str)
-    
-    return await _process()
-    
-    
+
 @mcp.tool()
 async def extract_entity_mentions(podcast_title: str, episode_title: str, entity: str) -> Any:
     """
@@ -1699,36 +1659,6 @@ async def extract_entity_mentions(podcast_title: str, episode_title: str, entity
         }, indent=2, default=str)
     except Exception as e:
         return f"Failed: {e}"
-    
-    
-@mcp.tool()
-    
-async def extract_question_answers(podcast_title: str, episode_title: str) -> Any:
-    """
-    Identify Q&A pairs in interviews, each extractable as a standalone clip.
-    Returns list of questions with answers and option to extract clips.
-    """
-    _, ep, err = _find_episode(podcast_title, episode_title)
-    if err:
-        return err
-    
-    segments = _get_segments(ep)
-    if not segments:
-        return "No transcript segments."
-    
-    async def _process():
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            qa_pairs = await identify_qa_pairs(session, segments)
-            if not qa_pairs:
-                return json.dumps({"status": "not_interview", "message": "No Q&A pairs detected."})
-            return json.dumps({
-                "status": "success", "qa_count": len(qa_pairs), "pairs": qa_pairs,
-                "tip": "Use extract_audio_clip with startTime/endTime to clip any Q&A pair."
-            }, indent=2, default=str)
-    
-    return await _process()
     
     
 # --- C: Social & Sharing ---
@@ -1841,68 +1771,7 @@ async def extract_cold_open(podcast_title: str, episode_title: str) -> Any:
     
     
 # --- D: Research & Analysis ---
-    
-@mcp.tool()
-    
-async def extract_emotional_peaks(podcast_title: str, episode_title: str, emotion: Optional[str] = None) -> Any:
-    """
-    Detect emotionally charged moments in the conversation.
-    Optional emotion filter: 'anger', 'joy', 'surprise', 'sadness', 'passion'.
-    Returns highlights with timestamps for clipping.
-    """
-    _, ep, err = _find_episode(podcast_title, episode_title)
-    if err:
-        return err
-    
-    segments = _get_segments(ep)
-    if not segments:
-        return "No transcript segments."
-    
-    async def _process():
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            peaks = await detect_emotional_peaks(session, segments, emotion)
-            if not peaks:
-                return json.dumps({"status": "none_found", "message": "No emotional peaks detected."})
-            return json.dumps({
-                "status": "success", "peaks": peaks,
-                "tip": "Use extract_audio_clip with startTime/endTime to clip any peak."
-            }, indent=2, default=str)
-    
-    return await _process()
-    
-    
-@mcp.tool()
-    
-async def extract_disagreements(podcast_title: str, episode_title: str) -> Any:
-    """
-    Find moments where speakers contradict or challenge each other.
-    Useful for fact-checking, debate analysis, and research.
-    """
-    _, ep, err = _find_episode(podcast_title, episode_title)
-    if err:
-        return err
-    
-    segments = _get_segments(ep)
-    if not segments:
-        return "No transcript segments."
-    
-    async def _process():
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            disagreements = await detect_disagreements(session, segments)
-            if not disagreements:
-                return json.dumps({"status": "none_found", "message": "No disagreements detected."})
-            return json.dumps({
-                "status": "success", "disagreements": disagreements,
-                "tip": "Use extract_audio_clip to clip any disagreement."
-            }, indent=2, default=str)
-    
-    return await _process()
-    
-    
+
 @mcp.tool()
 def compare_perspectives(topic: str, top_k: int = 5) -> Any:
     """
@@ -1938,134 +1807,6 @@ def compare_perspectives(topic: str, top_k: int = 5) -> Any:
     }, indent=2, default=str)
     
     
-@mcp.tool()
-    
-async def extract_data_claims(podcast_title: str, episode_title: str) -> Any:
-    """
-    Find moments where speakers cite statistics, studies, or specific numbers.
-    Useful for fact-checking and research verification.
-    """
-    _, ep, err = _find_episode(podcast_title, episode_title)
-    if err:
-        return err
-    
-    segments = _get_segments(ep)
-    if not segments:
-        return "No transcript segments."
-    
-    async def _process():
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            claims = await detect_data_claims(session, segments)
-            if not claims:
-                return json.dumps({"status": "none_found", "message": "No data claims detected."})
-            return json.dumps({
-                "status": "success", "claims": claims,
-                "tip": "Use extract_audio_clip to clip any claim for verification."
-            }, indent=2, default=str)
-    
-    return await _process()
-    
-    
-@mcp.tool()
-    
-async def extract_summary_clip(podcast_title: str, episode_title: str, max_duration: int = 120) -> Any:
-    """
-    Create a 2-minute executive summary by stitching together key points.
-    Perfect for busy people who want the gist of a long episode.
-    """
-    _, ep, err = _find_episode(podcast_title, episode_title)
-    if err:
-        return err
-    audio_url, err = _require_audio(ep)
-    if err:
-        return err
-    
-    segments = _get_segments(ep)
-    if not segments:
-        return "No transcript segments."
-    
-    async def _process():
-        ssl_context = ssl.create_default_context(cafile=certifi.where())
-        connector = aiohttp.TCPConnector(ssl=ssl_context)
-        async with aiohttp.ClientSession(connector=connector) as session:
-            points = await generate_summary_points(session, segments)
-            if not points:
-                return json.dumps({"status": "failed", "message": "Could not generate summary points."})
-    
-            # Trim to max_duration
-            ranges = []
-            total = 0
-            for pt in points:
-                dur = pt["endTime"] - pt["startTime"]
-                if total + dur > max_duration:
-                    break
-                ranges.append((pt["startTime"], pt["endTime"]))
-                total += dur
-    
-            if not ranges:
-                return json.dumps({"status": "failed", "message": "Summary points too short."})
-    
-            path = await stitch_clips(audio_url, ranges, label=f"summary_{episode_title}")
-            return json.dumps({
-                "status": "success", "clip_path": path,
-                "key_points": points[:len(ranges)],
-                "duration_seconds": round(total, 1)
-            }, indent=2, default=str)
-
-    return await _process()
-
-# --- Legacy / Specialist Tools ---
-# These tools are subsumed by the core tools above but kept for specialized workflows.
-# They are only registered when GOLDMINE_LEGACY_TOOLS=1 is set.
-    
-if os.environ.get("GOLDMINE_LEGACY_TOOLS", "0") == "1":
-        
-    @mcp.tool()
-    def export_universal_catalogue() -> Any:
-        """
-        Export the full podcast catalogue in a standardized, universal format (JSON-LD).
-        This graph format is optimized for generic Agent traversal and cross-platform indexing.
-        """
-        all_podcasts = list(store.podcasts.values())
-        return json.dumps(all_podcasts, indent=2, ensure_ascii=False)
-        
-    @mcp.tool()
-    def get_podcast(title: str) -> Any:
-        """Get a single podcast entity uniformly by title."""
-        p = store.get_details(title)
-        if not p:
-            return f"Podcast '{title}' not found."
-        return json.dumps(p, indent=2, ensure_ascii=False)
-        
-    @mcp.tool()
-    async def generate_daily_briefing(limit: int = 5) -> Any:
-        """
-        Generates a daily editorial meta-summary synthesizing the latest narrative trends.
-        """
-        from .reporter_adapter import generate_editorial_report
-        all_podcasts = list(store.podcasts.values())
-        async with aiohttp.ClientSession() as session:
-            report = await generate_editorial_report(session, all_podcasts[:limit])
-            return report
-
-    @mcp.tool()
-    async def find_narrative_shifts_legacy(topic: str) -> str:
-        """Tracks how a specific topic's rhetoric or tone has evolved recently."""
-        # Fallback to consolidated search
-        results = store.search(topic)
-        if not results:
-            return f"No narrative data found for topic: {topic}"
-            
-        summary = f"Analysis of narrative shifts for '{topic}':\n\n"
-        for r in results[:5]:
-            vibe = r.get("vibe", {})
-            tone = vibe.get("tone", "Standard")
-            summary += f"- {r.get('podcast_title')}: {r.get('title')} | Tone: {tone}\n"
-            summary += f"  Hook: {r.get('hook', 'N/A')}\n"
-        return summary
-
 if __name__ == "__main__":
     mcp.run()
 
