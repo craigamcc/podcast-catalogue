@@ -822,16 +822,16 @@ async def walkie_talkie_pivot(current_episode_title: str, user_interruption: str
             
     if current_ep and current_ep.get("highlights"):
         for h in current_ep.get("highlights"):
-            if q in h.reason.lower() or q in h.transcript_snippet.lower():
+            if q in h.get("reason", "").lower():
                 return json.dumps({
                     "status": "pivoted_within_episode",
                     "reason": f"Found '{q}' in the same episode.",
                     "next_snip": {
                         "podcastTitle": current_ep.get("podcast_title"),
                         "episodeTitle": current_ep.get("title"),
-                        "startTime": h.start_time,
-                        "endTime": h.end_time,
-                        "rationale": h.reason
+                        "startTime": h.get("startTime"),
+                        "endTime": h.get("endTime"),
+                        "rationale": h.get("reason")
                     }
                 }, indent=2)
 
@@ -839,16 +839,16 @@ async def walkie_talkie_pivot(current_episode_title: str, user_interruption: str
     for ep in store.episodes_index:
         if ep.get("highlights"):
             for h in ep.get("highlights"):
-                if q in h.reason.lower():
+                if q in h.get("reason", "").lower():
                     return json.dumps({
                         "status": "pivoted_new_show",
                         "reason": f"Pivoting to a new show discussing '{q}'.",
                         "next_snip": {
                             "podcastTitle": ep.get("podcast_title"),
                             "episodeTitle": ep.get("title"),
-                            "startTime": h.start_time,
-                            "endTime": h.end_time,
-                            "rationale": h.reason
+                            "startTime": h.get("startTime"),
+                            "endTime": h.get("endTime"),
+                            "rationale": h.get("reason")
                         }
                     }, indent=2)
 
