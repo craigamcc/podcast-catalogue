@@ -1581,9 +1581,9 @@ async def extract_speaker_reel(podcast_title: str, episode_title: str, speaker_n
         return f"Speaker '{speaker_name}' not found. Available: {speakers}"
     
     try:
-        path = asyncio.run(stitch_clips(
+        path = await stitch_clips(
             audio_url, ranges, label=f"reel_{speaker_name}"
-        ))
+        )
         return json.dumps({
             "status": "success", "clip_path": path,
             "speaker": speaker_name, "segment_count": len(ranges),
@@ -1621,9 +1621,9 @@ async def extract_dialogue(podcast_title: str, episode_title: str, speaker_a: st
         return f"No dialogue found between '{speaker_a}' and '{speaker_b}'."
     
     try:
-        path = asyncio.run(stitch_clips(
+        path = await stitch_clips(
             audio_url, ranges, label=f"dialogue_{speaker_a}_{speaker_b}"
-        ))
+        )
         return json.dumps({
             "status": "success", "clip_path": path,
             "speakers": [speaker_a, speaker_b], "segment_count": len(ranges)
@@ -1633,7 +1633,7 @@ async def extract_dialogue(podcast_title: str, episode_title: str, speaker_a: st
     
     
 @mcp.tool()
-def extract_speaker_intro(podcast_title: str, episode_title: str, guest_name: str) -> Any:
+async def extract_speaker_intro(podcast_title: str, episode_title: str, guest_name: str) -> Any:
     """
     Find and clip the moment a guest is introduced (typically first appearance + context).
     """
@@ -1659,8 +1659,8 @@ def extract_speaker_intro(podcast_title: str, episode_title: str, guest_name: st
     
     if intro_start is None:
         return f"'{guest_name}' not mentioned in transcript segments."
-    
-    return extract_audio_clip(podcast_title, ep.get("title"), intro_start, intro_end)
+
+    return await extract_audio_clip(podcast_title, ep.get("title"), intro_start, intro_end)
     
     
 # --- B: Topic & Entity ---
@@ -1802,11 +1802,11 @@ async def create_audiogram(
     title = f"{podcast_title} - {ep.get('title', '')}"[:80]
     
     try:
-        path = asyncio.run(_generate_audiogram(
+        path = await _generate_audiogram(
             audio_url, start_seconds, end_seconds,
             captions=captions, title=title,
             image_path=image_path
-        ))
+        )
         return json.dumps({
             "status": "success", "audiogram_path": path,
             "format": "MP4", "dimensions": "1080x1080",
@@ -1818,7 +1818,7 @@ async def create_audiogram(
     
     
 @mcp.tool()
-def extract_quote_clip(podcast_title: str, episode_title: str, quote_text: str) -> Any:
+async def extract_quote_clip(podcast_title: str, episode_title: str, quote_text: str) -> Any:
     """
     Find an exact or approximate text quote in the transcript and extract the audio.
     Useful when you read a quote and want to hear how it was actually said.
@@ -1852,7 +1852,7 @@ def extract_quote_clip(podcast_title: str, episode_title: str, quote_text: str) 
     start = max(0, best_seg.get("start", 0) - 2)
     end = best_seg.get("end", 0) + 2
     
-    result = extract_audio_clip(podcast_title, ep.get("title"), start, end)
+    result = await extract_audio_clip(podcast_title, ep.get("title"), start, end)
     return json.dumps({
         "match_score": f"{best_score:.0%}",
         "matched_text": best_seg.get("text", ""),
@@ -1862,7 +1862,7 @@ def extract_quote_clip(podcast_title: str, episode_title: str, quote_text: str) 
     
     
 @mcp.tool()
-def extract_cold_open(podcast_title: str, episode_title: str) -> Any:
+async def extract_cold_open(podcast_title: str, episode_title: str) -> Any:
     """
     Extract the 'hook' - the teaser moment in the first 2-3 minutes.
     Great for marketing clips that make people want to subscribe.
@@ -1877,8 +1877,8 @@ def extract_cold_open(podcast_title: str, episode_title: str) -> Any:
     segments = _get_segments(ep)
     # The cold open is typically the first 60-120 seconds
     cold_end = min(120.0, segments[-1].get("end", 120) if segments else 120)
-    
-    return extract_audio_clip(podcast_title, ep.get("title"), 0, cold_end)
+
+    return await extract_audio_clip(podcast_title, ep.get("title"), 0, cold_end)
     
     
 # --- D: Research & Analysis ---
