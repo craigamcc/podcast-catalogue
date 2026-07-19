@@ -16,9 +16,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install package
+      - name: Install package (core only)
         run: pip install -e .[dev]
-      - name: Verify core import
+      - name: Verify core import works without extras
         run: python -c "import podcast_catalogue"
+      - name: Install server extras
+        run: pip install -e .[dev,mcp,http]
       - name: Run tests
         run: python -m pytest -q
+        env:
+          GOLDMINE_API_TOKEN: ci-test-token
