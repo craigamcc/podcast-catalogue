@@ -32,6 +32,13 @@ elif os.path.exists(FULL_INTELLIGENCE_DATA_FILE):
 else:
     DATA_FILE = ENRICHED_DATA_FILE if os.path.exists(ENRICHED_DATA_FILE) else BASIC_DATA_FILE
 
+# --- Vibe complexity thresholds ---
+# Shared by find_podcast_by_vibe and find_episodes_by_vibe, which previously
+# disagreed (0.4/0.6 vs 0.3/0.7) and gave a different answer to the same
+# "Medium complexity" query depending on which tool was called.
+VIBE_COMPLEXITY_SIMPLE_MAX = 0.4  # complexity <= this counts as "Simple"
+VIBE_COMPLEXITY_DEEP_MIN = 0.6    # complexity >= this counts as "Deep"
+
 # --- In-Memory Data Store ---
 class DataStore:
     def __init__(self):
@@ -363,8 +370,6 @@ def get_trending_content(limit: int = 5) -> Any:
 
 def wrap_with_ui(results: Any) -> Any:
     return {"content": [{"type": "text", "text": json.dumps(results, indent=2, default=str)}], "_meta": {"ui": {"resourceUri": "ui://podcast-app"}}}
-
-_search_cache = {}
 
 @mcp.tool()
 async def search_catalogue(query: str, limit: int = 10) -> Any:
@@ -701,9 +706,9 @@ def find_podcast_by_vibe(tone: Optional[str] = None, complexity: Optional[str] =
         match_complex = True
         if complexity:
             c = vibe.get("complexity", 0.5)
-            if complexity == "Simple" and c > 0.4: match_complex = False
-            elif complexity == "Deep" and c < 0.6: match_complex = False
-            elif complexity == "Medium" and (c <= 0.4 or c >= 0.6): match_complex = False
+            if complexity == "Simple" and c > VIBE_COMPLEXITY_SIMPLE_MAX: match_complex = False
+            elif complexity == "Deep" and c < VIBE_COMPLEXITY_DEEP_MIN: match_complex = False
+            elif complexity == "Medium" and (c <= VIBE_COMPLEXITY_SIMPLE_MAX or c >= VIBE_COMPLEXITY_DEEP_MIN): match_complex = False
 
         if match_tone and match_complex:
             matches.append({
@@ -1043,10 +1048,7 @@ async def recommend_episodes(interests: str, mood: str = None, duration_max: int
         # Priority 3: Complexity filtering
         if comp < complexity_min or comp > complexity_max:
             continue
-            
-        audio_url = ep.get("audio_url") or ep.get("audioUrl")
-        if not audio_url: continue
-            
+
         score = 0
         # (Same scoring logic as before, just ensuring it's in the right place)
         # 1. Entity & Topic Match
@@ -1065,11 +1067,13 @@ async def recommend_episodes(interests: str, mood: str = None, duration_max: int
     
     results = []
     for _, ep in scored_matches[:limit]:
+        audio_url = ep.get("audio_url") or ep.get("audioUrl")
         results.append({
             "podcast": ep.get("podcast_title"),
             "episode": ep.get("title"),
             "vibe": ep.get("vibe"),
-            "audio_url": ep.get("audio_url") or ep.get("audioUrl")
+            "audio_url": audio_url,
+            "audio": bool(audio_url)
         })
     return wrap_with_ui(results)
 
@@ -1097,9 +1101,9 @@ def find_episodes_by_vibe(tone: Optional[str] = None, complexity: Optional[str] 
         match_complex = True
         if complexity:
             c = vibe.get("complexity", 0.5)
-            if complexity == "Simple" and c > 0.3: match_complex = False
-            if complexity == "Medium" and (c <= 0.3 or c >= 0.7): match_complex = False
-            if complexity == "Deep" and c < 0.7: match_complex = False
+            if complexity == "Simple" and c > VIBE_COMPLEXITY_SIMPLE_MAX: match_complex = False
+            if complexity == "Medium" and (c <= VIBE_COMPLEXITY_SIMPLE_MAX or c >= VIBE_COMPLEXITY_DEEP_MIN): match_complex = False
+            if complexity == "Deep" and c < VIBE_COMPLEXITY_DEEP_MIN: match_complex = False
             
         if match_tone and match_complex:
             matches.append({
@@ -1149,10 +1153,15 @@ def extract_chapter_clip(episode_title: str, chapter_keyword: str) -> Any:
 @mcp.tool()
 def get_catalogue_stats() -> Any:
     """Returns overview statistics of the GoldMine intelligence catalogue."""
+    total_episodes = len(store.episodes_index)
+    enriched_pct = (
+        sum(1 for e in store.episodes_index if e.get("vibe")) / total_episodes * 100
+        if total_episodes else 0.0
+    )
     return json.dumps({
         "total_shows": len(store.podcasts),
-        "total_episodes": len(store.episodes_index),
-        "enriched_coverage": f"{sum(1 for e in store.episodes_index if e.get('vibe')) / len(store.episodes_index) * 100:.1f}%",
+        "total_episodes": total_episodes,
+        "enriched_coverage": f"{enriched_pct:.1f}%",
         "network": "ABC Australian Content"
     }, indent=2)
 
