@@ -43,10 +43,15 @@ VIBE_COMPLEXITY_DEEP_MIN = 0.6    # complexity >= this counts as "Deep"
 
 # --- In-Memory Data Store ---
 class DataStore:
-    def __init__(self):
+    def __init__(self, data_file: str = DATA_FILE):
         self.podcasts: Dict[str, Dict[str, Any]] = {}
         self.episodes_index: List[Dict[str, Any]] = [] # For semantic/text search
         self.episodes_by_id: Dict[str, Dict[str, Any]] = {} # Unique ID mapping
+        # Instance-level canonical path so persistence can be redirected (e.g.
+        # to an isolated temp file in tests). ingest_snipd_markdown's
+        # save+reload previously always hit the module-global DATA_FILE, which
+        # let the e2e ingest test overwrite the real catalogue.
+        self.data_file = data_file
 
     @staticmethod
     def _provenance_or_default(ep: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -92,7 +97,8 @@ class DataStore:
                 if "vibe" not in podcast: podcast["vibe"] = {}
                 podcast["vibe"]["complexity"] = avg_complexity
 
-    def load_data(self, path: str = DATA_FILE):
+    def load_data(self, path: str = None):
+        path = path or self.data_file
         if not os.path.exists(path):
             print(f"Warning: Data file not found at {path}", file=sys.stderr)
             return
@@ -175,8 +181,9 @@ class DataStore:
                 file=sys.stderr,
             )
 
-    def save_data(self, path: str = DATA_FILE):
+    def save_data(self, path: str = None):
         """Persists the in-memory podcasts store back to a JSONL file (atomically)."""
+        path = path or self.data_file
         print(f"Saving GoldMine catalogue to {path}...", file=sys.stderr)
         tmp_path = path + ".tmp"
         try:

@@ -10,19 +10,28 @@ from podcast_catalogue.server import store, DataStore
 
 
 @pytest.fixture(autouse=True)
-def reset_store():
-    """Reset the global DataStore before each test to prevent cross-test contamination."""
+def reset_store(tmp_path):
+    """Reset the global DataStore before each test to prevent cross-test contamination.
+
+    Critically, this also redirects the store's persistence to an isolated temp
+    file. Otherwise a test that exercises ingest (which calls save_data +
+    load_data) would rewrite the real data/universe.jsonl from the wiped test
+    state — which is exactly how the e2e Snipd-ingest test clobbered the real
+    catalogue once the e2e suite became runnable.
+    """
     # Save original state
     original_podcasts = store.podcasts
     original_episodes_index = store.episodes_index
     original_episodes_by_id = store.episodes_by_id
     original_search = getattr(store, '_original_search', store.search)
+    original_data_file = store.data_file
 
-    # Reset to clean state
+    # Reset to clean state, isolated from the real catalogue file
     store.podcasts = {}
     store.episodes_index = []
     store.episodes_by_id = {}
     store.search = original_search  # restore in case a test monkeypatched it
+    store.data_file = str(tmp_path / "test_universe.jsonl")
 
     yield store
 
@@ -31,6 +40,7 @@ def reset_store():
     store.episodes_index = original_episodes_index
     store.episodes_by_id = original_episodes_by_id
     store.search = original_search
+    store.data_file = original_data_file
 
 
 @pytest.fixture

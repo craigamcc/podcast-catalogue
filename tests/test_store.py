@@ -138,6 +138,35 @@ class TestFabricatedLinkMigration:
         assert record["applePodcastPage"].endswith("id80934561")
 
 
+class TestPersistenceIsolation:
+    """Regression: ingest must never write outside the store's own data_file.
+
+    An earlier e2e Snipd-ingest test overwrote the real data/universe.jsonl
+    because ingest_snipd_markdown's save+reload always targeted the module
+    global DATA_FILE. DataStore now carries an instance-level data_file.
+    """
+
+    def test_ingest_writes_only_to_instance_data_file(self, tmp_path):
+        from podcast_catalogue.server import DataStore
+
+        real_file = tmp_path / "real_catalogue.jsonl"
+        write_jsonl(real_file, [GOOD_SHOW])
+
+        isolated = tmp_path / "isolated.jsonl"
+        store = DataStore(data_file=str(isolated))
+
+        content = (
+            "---\nshow_title: Ingested Show\nepisode_title: Ingested Ep\n---\n"
+            "### [Snip 1](http://example.com)\nSome content."
+        )
+        store.ingest_snipd_markdown(content)
+
+        # The unrelated 'real' file must be untouched; the isolated one written.
+        assert json.loads(real_file.read_text().strip())["title"] == "Good Show"
+        assert isolated.exists()
+        assert "Ingested Show" in isolated.read_text()
+
+
 class TestProvenanceDefaults:
     def test_enriched_episode_without_provenance_gets_honest_default(self, tmp_path):
         data_file = tmp_path / "universe.jsonl"
