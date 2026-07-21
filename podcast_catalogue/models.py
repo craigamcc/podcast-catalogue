@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 from typing import List, Optional, Union, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Location(BaseModel):
@@ -248,6 +248,19 @@ class Episode(BaseModel):
 
     # Phase 4: Social Syntheis
     social_telemetry: List[SocialTelemetry] = Field(default_factory=list, alias="socialTelemetry")
+
+    @field_validator("guests", mode="before")
+    @classmethod
+    def _coerce_string_guests(cls, v):
+        """Accept bare-string guests (["Jane Doe"]) as GuestProfile(name=...).
+
+        Some enriched records store guests as a plain list of names rather than
+        objects. Coerce here so a name-only guest never quarantines an entire
+        show at the normalization boundary.
+        """
+        if isinstance(v, list):
+            return [{"name": g} if isinstance(g, str) else g for g in v]
+        return v
 
     class Config:
         populate_by_name = True

@@ -10,6 +10,7 @@ from typing import List, Optional, Dict, Any
 from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 from .entity_registry import load_registry, save_registry
+from .models import Podcast
 
 # Load environment variables from .env if present
 load_dotenv()
@@ -61,10 +62,10 @@ class DataStore:
         provenance record, synthesize one marked unknown/unreviewed so downstream
         consumers can never mistake unlabeled model output for verified content.
         """
-        existing = ep.get("aiProvenance") or ep.get("ai_provenance")
+        existing = ep.get("aiProvenance")
         if existing:
             return existing
-        has_ai_enrichment = bool(ep.get("vibe") or ep.get("highlights") or ep.get("chapters"))
+        has_ai_enrichment = any(ep.get(k) for k in ("vibe", "highlights", "chapters"))
         if has_ai_enrichment:
             return {"modelName": "unknown", "humanReviewed": False}
         return None
@@ -121,41 +122,58 @@ class DataStore:
                     data = json.loads(line)
                     title = data.get("title")
                     if not title: continue
-                    
-                    self.podcasts[title.lower()] = data
-                    
-                    for ep in data.get("episodes", []):
+
+                    # Normalize every record through the schema so the store
+                    # holds exactly one key convention (camelCase, via aliases).
+                    # populate_by_name lets legacy snake_case input validate too;
+                    # unknown fields are dropped; records that fail validation
+                    # fall through to quarantine below. mode="json" keeps the
+                    # dict JSON-native (enums -> values) so it re-serializes.
+                    normalized = Podcast.model_validate(data).model_dump(
+                        by_alias=True, mode="json", exclude_none=True
+                    )
+
+                    # Honest provenance default (P3.4) on the canonical record.
+                    for ep in normalized.get("episodes", []):
+                        prov = self._provenance_or_default(ep)
+                        if prov is not None:
+                            ep["aiProvenance"] = prov
+
+                    self.podcasts[title.lower()] = normalized
+
+                    for ep in normalized.get("episodes", []):
                         ep_title = ep.get("title")
                         ep_id = hashlib.md5(f"{title}:{ep_title}".encode()).hexdigest()[:12]
-                        
+
                         # Hallucination Shield: Skip contaminated transcripts
-                        transcript = ep.get("transcript", "")
+                        transcript = ep.get("transcript") or ""
                         if not self._is_transcript_valid(transcript):
                             transcript = "[TRANSCRIPT UNAVAILABLE: DATA QUALITY ISSUE DETECTED]"
-                            
+
                         episode_data = {
                             "id": ep_id,
                             "podcast_title": title,
                             "title": ep_title,
-                            "description": ep.get("description", ""),
-                            "publishedAt": ep.get("publishedAt", ""),
+                            "description": ep.get("description") or "",
+                            "publishedAt": ep.get("publishedAt") or "",
                             "transcript": transcript,
-                            "hook": ep.get("narrativeHook") or ep.get("description", ""),
+                            # narrative hook, falling back to description
+                            "hook": next((v for k in ("narrativeHook", "description") if (v := ep.get(k))), ""),
                             "entities": ep.get("entities", []),
                             "guests": ep.get("guests", []),
                             "segments": ep.get("segments", []),
                             "chapters": ep.get("chapters", []),
                             "highlights": ep.get("highlights", []),
-                            "audio_url": ep.get("audioUrl") or ep.get("audio_url", ""),
-                            "vibe": ep.get("vibe", {}),
-                            "engagement": ep.get("engagement", {}),
-                            "apple_podcast_page": data.get("applePodcastPage"),
+                            "audio_url": ep.get("audioUrl") or "",
+                            "vibe": ep.get("vibe") or {},
+                            "engagement": ep.get("engagement") or {},
+                            "apple_podcast_page": normalized.get("applePodcastPage"),
                             # Editorial Trust Layer
                             "genre": ep.get("genre"),
-                            "content_risk": ep.get("contentRisk") or ep.get("content_risk"),
-                            "ai_provenance": self._provenance_or_default(ep),
+                            "content_risk": ep.get("contentRisk"),
+                            "ai_provenance": ep.get("aiProvenance"),
                             "expires": ep.get("expires"),
-                            "content_reference_time": ep.get("contentReferenceTime") or ep.get("content_reference_time"),
+                            "content_reference_time": ep.get("contentReferenceTime"),
                         }
                         self.episodes_index.append(episode_data)
                         self.episodes_by_id[ep_id] = episode_data
@@ -549,8 +567,8 @@ async def play_episode(podcast_title: str, episode_title: str) -> Any:
     if err:
         return err
 
-    audio_url = episode.get("audioUrl") or episode.get("audio_url")
-    
+    audio_url = episode.get("audioUrl")
+
     # DYNAMIC MEDIA BRIDGE: If URL is null, try to fetch it live from the episode page
     if not audio_url and episode.get("url"):
         try:
@@ -607,24 +625,25 @@ def get_editorial_trust_report(podcast_title: str, episode_title: str) -> Any:
         "episode": episode.get("title"),
         "podcast": podcast_title,
         "trust_summary": {
-            "risk_level": (episode.get("contentRisk") or episode.get("content_risk") or {}).get("level", "low"),
-            "risk_categories": (episode.get("contentRisk") or episode.get("content_risk") or {}).get("categories", []),
-            "ai_model": (episode.get("aiProvenance") or episode.get("ai_provenance") or {}).get("modelName"),
+            "risk_level": (episode.get("contentRisk") or {}).get("level", "low"),
+            "risk_categories": (episode.get("contentRisk") or {}).get("categories", []),
+            "ai_model": (episode.get("aiProvenance") or {}).get("modelName"),
             "expiry": episode.get("expires"),
-            "reference_time": episode.get("contentReferenceTime") or episode.get("content_reference_time")
+            "reference_time": episode.get("contentReferenceTime")
         },
         "highlight_claims": []
     }
-    
+
     for hl in episode.get("highlights", []):
+        anchor = hl.get("sourceAnchor") or {}
         report["highlight_claims"].append({
             "claim": hl.get("title"),
             "category": hl.get("category"),
-            "status": hl.get("claimStatus") or hl.get("claim_status") or "unverified",
+            "status": hl.get("claimStatus") or "unverified",
             "provenance": {
-                "transcript_segment": (hl.get("sourceAnchor") or hl.get("source_anchor") or {}).get("transcriptText"),
-                "timestamp": (hl.get("sourceAnchor") or hl.get("source_anchor") or {}).get("timestampStart"),
-                "spotify_link": (hl.get("sourceAnchor") or hl.get("source_anchor") or {}).get("spotifyDeepLink") or (hl.get("sourceAnchor") or hl.get("source_anchor") or {}).get("spotify_deep_link")
+                "transcript_segment": anchor.get("transcriptText"),
+                "timestamp": anchor.get("timestampStart"),
+                "spotify_link": anchor.get("spotifyDeepLink")
             }
         })
         
@@ -649,10 +668,10 @@ def generate_json_ld(podcast_title: str, episode_title: Optional[str] = None) ->
         "description": p.get("description"),
         "publisher": {
             "@type": "Organization",
-            "name": p.get("sourceOrganization") or p.get("source_organization") or "ABC Australia"
+            "name": p.get("sourceOrganization") or "ABC Australia"
         },
         "genre": p.get("genre") or p.get("primaryGenre"),
-        "license": p.get("license") or p.get("licenseUrl") or p.get("license_url")
+        "license": p.get("license") or p.get("licenseUrl")
     }
     
     if episode_title:
@@ -663,20 +682,20 @@ def generate_json_ld(podcast_title: str, episode_title: Optional[str] = None) ->
             ld["name"] = episode.get("title")
             ld["description"] = episode.get("description")
             ld["expires"] = episode.get("expires")
-            ld["contentRating"] = (episode.get("contentRisk") or episode.get("content_risk") or {}).get("level")
-            
+            ld["contentRating"] = (episode.get("contentRisk") or {}).get("level")
+
             # Add Clips (Highlights)
             clips = []
             for hl in episode.get("highlights", []):
                 clip = {
                     "@type": "Clip",
                     "name": hl.get("title"),
-                    "startOffset": hl.get("startTime") or hl.get("start_time"),
-                    "endOffset": hl.get("endTime") or hl.get("end_time"),
+                    "startOffset": hl.get("startTime"),
+                    "endOffset": hl.get("endTime"),
                     "interpretedAsClaim": {
                         "@type": "Claim",
-                        "claimInterpreter": hl.get("claimInterpreter") or hl.get("claim_interpreter"),
-                        "claimStatus": hl.get("claimStatus") or hl.get("claim_status")
+                        "claimInterpreter": hl.get("claimInterpreter"),
+                        "claimStatus": hl.get("claimStatus")
                     }
                 }
                 clips.append(clip)
@@ -844,7 +863,7 @@ def get_dj_session_bundle(podcast_title: str, episode_title: str) -> Any:
             "episode_title": episode.get("title"),
             "podcast_title": p.get("title"),
             "vibe": episode.get("vibe"),
-            "narrative_hook": episode.get("hook") or episode.get("narrativeHook")
+            "narrative_hook": episode.get("narrativeHook")
         }
     }
     return json.dumps(bundle, indent=2)
@@ -1000,7 +1019,7 @@ async def get_recent_episodes(show: Optional[str] = None, limit: int = 5) -> Any
 
     results = []
     for ep in sorted_eps[:limit]:
-        audio_url = ep.get("audio_url") or ep.get("audioUrl")
+        audio_url = ep.get("audio_url")
         results.append({
             "podcast_title": ep.get("podcast_title"),
             "episode_title": ep.get("title"),
@@ -1070,7 +1089,7 @@ async def search_by_guest(guest_name: str) -> Any:
             "podcast": ep.get("podcast_title"),
             "episode": ep.get("title"),
             "reason": reasons[0],
-            "audio_url": ep.get("audio_url") or ep.get("audioUrl")
+            "audio_url": ep.get("audio_url")
         })
     return wrap_with_ui(results)
 
@@ -1160,7 +1179,7 @@ async def recommend_episodes(interests: str, mood: str = None, duration_max: int
     
     results = []
     for _, ep in scored_matches[:limit]:
-        audio_url = ep.get("audio_url") or ep.get("audioUrl")
+        audio_url = ep.get("audio_url")
         results.append({
             "podcast": ep.get("podcast_title"),
             "episode": ep.get("title"),
@@ -1237,7 +1256,7 @@ def extract_chapter_clip(episode_title: str, chapter_keyword: str) -> Any:
             "chapter_title": match["title"],
             "summary": match["summary"],
             "startTime": match["startTime"],
-            "audio_url": target_ep.get("audio_url") or target_ep.get("audioUrl"),
+            "audio_url": target_ep.get("audio_url"),
             "tip": f"You can jump to {match['startTime']}s in the player."
         }, indent=2)
         

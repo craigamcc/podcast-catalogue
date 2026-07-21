@@ -167,6 +167,94 @@ class TestPersistenceIsolation:
         assert "Ingested Show" in isolated.read_text()
 
 
+RICH_SHOW = {
+    "title": "Rich Show",
+    "primaryGenre": "Science",
+    "episodes": [
+        {
+            "title": "Deep Episode",
+            "audioUrl": "https://example.com/deep.mp3",
+            "narrativeHook": "A hook.",
+            "vibe": {"tone": ["Analytical"], "complexity": 0.8, "pace": "Moderate"},
+            "guests": ["Plain Name", {"name": "Dict Guest", "expertise": "X"}],
+            "highlights": [
+                {"title": "H1", "reason": "why", "startTime": 5.0, "endTime": 9.0,
+                 "claimStatus": "confirmed"}
+            ],
+            "contentRisk": {"level": "medium", "categories": ["health"]},
+        }
+    ],
+}
+
+
+class TestStoreNormalization:
+    def test_store_holds_canonical_camelcase(self, tmp_path):
+        from podcast_catalogue.server import DataStore
+        data_file = tmp_path / "u.jsonl"
+        # Feed snake_case input to prove populate_by_name + by_alias normalizes it
+        snake = {"title": "S", "sourceOrganization": None,
+                 "episodes": [{"title": "E", "audio_url": "https://x/a.mp3",
+                               "narrative_hook": "h"}]}
+        write_jsonl(data_file, [snake])
+
+        store = DataStore(data_file=str(data_file))
+        store.load_data()
+
+        pod = store.podcasts["s"]
+        ep = pod["episodes"][0]
+        # camelCase alias present, snake original gone
+        assert ep.get("audioUrl") == "https://x/a.mp3"
+        assert "audio_url" not in ep
+        assert ep.get("narrativeHook") == "h"
+        assert "narrative_hook" not in ep
+
+    def test_rich_fields_preserved(self, tmp_path):
+        from podcast_catalogue.server import DataStore
+        data_file = tmp_path / "u.jsonl"
+        write_jsonl(data_file, [RICH_SHOW])
+
+        store = DataStore(data_file=str(data_file))
+        store.load_data()
+
+        ep = store.podcasts["rich show"]["episodes"][0]
+        assert ep["vibe"]["complexity"] == 0.8
+        assert ep["highlights"][0]["claimStatus"] == "confirmed"
+        assert ep["contentRisk"]["level"] == "medium"
+        # string guest coerced to object; dict guest preserved
+        names = {g["name"] for g in ep["guests"]}
+        assert names == {"Plain Name", "Dict Guest"}
+
+    def test_load_is_idempotent(self, tmp_path):
+        from podcast_catalogue.server import DataStore
+        data_file = tmp_path / "u.jsonl"
+        write_jsonl(data_file, [RICH_SHOW, GOOD_SHOW])
+
+        store = DataStore(data_file=str(data_file))
+        store.load_data()
+        first = dict(store.podcasts)
+        first_index_len = len(store.episodes_index)
+        store.load_data()
+        assert store.podcasts == first
+        assert len(store.episodes_index) == first_index_len
+
+    def test_invalid_record_quarantined_valid_kept(self, tmp_path):
+        from podcast_catalogue.server import DataStore
+        data_file = tmp_path / "u.jsonl"
+        # Second record fails validation: highlight missing required title/reason
+        bad = {"title": "Bad", "episodes": [
+            {"title": "E", "highlights": [{"startTime": "not-a-number"}]}]}
+        write_jsonl(data_file, [GOOD_SHOW, bad])
+
+        store = DataStore(data_file=str(data_file))
+        store.load_data()
+
+        assert "good show" in store.podcasts
+        assert "bad" not in store.podcasts
+        quarantine = tmp_path / "u.jsonl.quarantine.jsonl"
+        assert quarantine.exists()
+        assert "Bad" in quarantine.read_text()
+
+
 class TestProvenanceDefaults:
     def test_enriched_episode_without_provenance_gets_honest_default(self, tmp_path):
         data_file = tmp_path / "universe.jsonl"
