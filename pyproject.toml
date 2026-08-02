@@ -26,7 +26,9 @@ transcribe = ["mlx-whisper", "pyannote.audio>=3.1", "torchaudio", "yt-dlp"]
 index = ["lancedb", "voyager", "numpy"]
 ai = ["google-genai"]
 http = ["fastapi", "uvicorn"]
-mcp = ["mcp"]
+# Pinned <2: server.py targets the 1.x FastMCP API (mcp.server.fastmcp),
+# which was removed in mcp 2.0. Unpinned installs silently broke CI.
+mcp = ["mcp>=1.9,<2.0"]
 dev = ["pytest", "pytest-asyncio"]
 
 [project.scripts]

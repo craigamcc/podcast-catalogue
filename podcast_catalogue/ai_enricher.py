@@ -84,6 +84,15 @@ class ContentRiskSchema(BaseModel):
     categories: List[str] = []
     requiresHumanReview: bool = False
 
+class EngagementSchema(BaseModel):
+    model_config = {"populate_by_name": True}
+    takeaway: Optional[str] = None
+    key_statistics: List[str] = Field(default_factory=list, alias="keyStatistics")
+    best_quotes: List[str] = Field(default_factory=list, alias="bestQuotes")
+    why_listen: Optional[str] = Field(None, alias="whyListen")
+    social_post: Optional[str] = Field(None, alias="socialPost")
+    audiogram_captions: List[Dict[str, Any]] = Field(default_factory=list, alias="audiogramCaptions")
+
 class EpisodeAnalysisSchema(BaseModel):
     narrative_hook: str
     vibe: VibeSchema
@@ -140,15 +149,6 @@ class TimelineItemSchema(BaseModel):
     endTime: float
     link: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
-
-class EngagementSchema(BaseModel):
-    model_config = {"populate_by_name": True}
-    takeaway: Optional[str] = None
-    key_statistics: List[str] = Field(default_factory=list, alias="keyStatistics")
-    best_quotes: List[str] = Field(default_factory=list, alias="bestQuotes")
-    why_listen: Optional[str] = Field(None, alias="whyListen")
-    social_post: Optional[str] = Field(None, alias="socialPost")
-    audiogram_captions: List[Dict[str, Any]] = Field(default_factory=list, alias="audiogramCaptions")
 
 # --- Provider Interfaces ---
 
