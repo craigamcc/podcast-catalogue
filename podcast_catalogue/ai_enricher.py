@@ -71,13 +71,6 @@ class GuestSchema(BaseModel):
     expertise: str
     bio: str
 
-class EngagementSchema(BaseModel):
-    takeaway: str
-    keyStatistics: List[str]
-    bestQuotes: List[str]
-    whyListen: str
-    socialPost: str
-
 class PodcastAnalysisSchema(BaseModel):
     narrative_hook: str
     vibe: VibeSchema
@@ -90,6 +83,15 @@ class ContentRiskSchema(BaseModel):
     level: str = "low"
     categories: List[str] = []
     requiresHumanReview: bool = False
+
+class EngagementSchema(BaseModel):
+    model_config = {"populate_by_name": True}
+    takeaway: Optional[str] = None
+    key_statistics: List[str] = Field(default_factory=list, alias="keyStatistics")
+    best_quotes: List[str] = Field(default_factory=list, alias="bestQuotes")
+    why_listen: Optional[str] = Field(None, alias="whyListen")
+    social_post: Optional[str] = Field(None, alias="socialPost")
+    audiogram_captions: List[Dict[str, Any]] = Field(default_factory=list, alias="audiogramCaptions")
 
 class EpisodeAnalysisSchema(BaseModel):
     narrative_hook: str
@@ -147,15 +149,6 @@ class TimelineItemSchema(BaseModel):
     endTime: float
     link: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
-
-class EngagementSchema(BaseModel):
-    model_config = {"populate_by_name": True}
-    takeaway: Optional[str] = None
-    key_statistics: List[str] = Field(default_factory=list, alias="keyStatistics")
-    best_quotes: List[str] = Field(default_factory=list, alias="bestQuotes")
-    why_listen: Optional[str] = Field(None, alias="whyListen")
-    social_post: Optional[str] = Field(None, alias="socialPost")
-    audiogram_captions: List[Dict[str, Any]] = Field(default_factory=list, alias="audiogramCaptions")
 
 # --- Provider Interfaces ---
 
@@ -241,10 +234,10 @@ Return ONLY valid JSON.
         # --- Post-Processor: Trust Wiring & Source Anchoring ---
         if isinstance(res, dict):
             # 1. AI Provenance
-            from datetime import datetime
+            from datetime import datetime, timezone
             res["ai_provenance"] = {
                 "modelName": self.model,
-                "generatedAt": datetime.utcnow().isoformat() + "Z"
+                "generatedAt": datetime.now(timezone.utc).isoformat()
             }
             
             # 2. Verbatim Source Anchors
@@ -387,9 +380,10 @@ Return ONLY valid JSON.
 # --- Ollama Provider (Local Qwen) ---
 
 class OllamaEngine(AIEngine):
-    def __init__(self, endpoint: str = "http://localhost:11434/api/generate", model: str = "gemma4:latest"):
-        self.endpoint = endpoint
-        self.model = model
+    def __init__(self, endpoint: str = None, model: str = None):
+        from .config import OLLAMA_GENERATE_URL, OLLAMA_MODEL
+        self.endpoint = endpoint or OLLAMA_GENERATE_URL
+        self.model = model or OLLAMA_MODEL
 
     async def generate_regional_master_pulse(self, region_id: str, episodes_data: List[Dict[str, Any]], previous_pulse: Optional[Dict] = None) -> Optional[Dict]:
         context_blocks = []
@@ -553,11 +547,12 @@ def get_engine(provider: str = "ollama", model: str = None, ctx: Any = None) -> 
         provider = getattr(ctx.config, 'provider', 'ollama')
         model = model or getattr(ctx.config, 'model', None)
 
+    from .config import GEMINI_MODEL, OLLAMA_MODEL
     if provider == "gemini":
         key = os.environ.get("GEMINI_API_KEY")
-        return GeminiEngine(api_key=key, model=model or "gemini-2.5-flash")
+        return GeminiEngine(api_key=key, model=model or GEMINI_MODEL)
     else:
-        return OllamaEngine(model=model or "qwen3.5:latest")
+        return OllamaEngine(model=model or OLLAMA_MODEL)
 
 # --- Legacy Compatibility Functions (delegating to get_engine) ---
 
@@ -650,12 +645,3 @@ async def generate_deep_context_timeline(session, segments, title, ctx=None):
     engine = get_engine(ctx=ctx)
     return await engine.generate_deep_context_timeline(text, title)
 
-# Placeholder for additional legacy functions if needed
-async def identify_speakers(session, segments, title, description, ctx=None): return {}
-async def find_topic_segments(session, segments, topic, ctx=None): return []
-async def detect_emotional_peaks(session, segments, emotion=None, ctx=None): return []
-async def detect_disagreements(session, segments, ctx=None): return []
-async def detect_data_claims(session, segments, ctx=None): return []
-async def generate_summary_points(session, segments, max_points=7, ctx=None): return []
-async def identify_qa_pairs(session, segments, ctx=None): return []
-async def generate_image_prompt(session, segments, ctx=None): return None

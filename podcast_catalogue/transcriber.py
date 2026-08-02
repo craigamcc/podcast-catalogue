@@ -2,7 +2,6 @@ import os
 import tempfile
 import asyncio
 import aiohttp
-import mlx_whisper
 
 import certifi
 import ssl
@@ -153,8 +152,10 @@ def transcribe_audio(audio_path: str, model: str = "large-v3-turbo") -> dict:
       - 'base'            → 39M params, fast, ~13% WER (legacy default)
       - 'large-v3-turbo'  → 809M params (4 decoder layers), ~5% WER
     """
+    import mlx_whisper
+
     print(f"Transcribing {audio_path} using model='{model}'...")
-    
+
     # Handle repo naming convention differences in mlx-community
     repo_id = f"mlx-community/whisper-{model}"
     if model != "large-v3-turbo":

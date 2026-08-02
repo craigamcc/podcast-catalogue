@@ -4,10 +4,11 @@ import random
 from typing import List, Dict, Any, Optional
 from .models import Podcast, Episode, Highlight
 from .ai_enricher import get_engine
+from .config import data_path
 
 class DJTriageService:
-    def __init__(self, universe_path: str = "data/universe.jsonl"):
-        self.universe_path = universe_path
+    def __init__(self, universe_path: str = None):
+        self.universe_path = universe_path or data_path("universe.jsonl")
         self.podcasts: List[Podcast] = []
         self._load_universe()
 

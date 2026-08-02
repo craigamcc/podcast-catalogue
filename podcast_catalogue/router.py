@@ -8,8 +8,7 @@ import json
 import aiohttp
 from typing import Dict, Any, Optional, List
 
-OLLAMA_API_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "qwen3:14b"
+from .config import OLLAMA_GENERATE_URL as OLLAMA_API_URL, OLLAMA_MODEL as MODEL_NAME
 
 # Lightweight system prompt for fast intent classification
 ROUTER_SYSTEM_PROMPT = """

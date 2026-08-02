@@ -8,8 +8,15 @@ build/
 
 # Data & cache
 data/chroma_db/
+data/clips/
+data/lancedb_store/
 .cache/
 *.wav
+*.mp3
+*.mp4
+*.log
+*.bak
+*.voy
 
 # Debug files
 debug_*.json

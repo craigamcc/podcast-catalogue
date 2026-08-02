@@ -1,6 +1,6 @@
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "podcast-catalogue"
@@ -18,19 +18,25 @@ dependencies = [
     "beautifulsoup4",
     "pydantic>=2.0",
     "certifi",
-    "mlx-whisper",
-    "torchaudio",
-    "speechbrain",
-    "scikit-learn",
-    "chromadb",
+    "python-dotenv",
 ]
 
 [project.optional-dependencies]
-mcp = ["mcp"]
-dev = ["pytest"]
+transcribe = ["mlx-whisper", "pyannote.audio>=3.1", "torchaudio", "yt-dlp"]
+index = ["lancedb", "voyager", "numpy"]
+ai = ["google-genai"]
+http = ["fastapi", "uvicorn"]
+# Pinned <2: server.py targets the 1.x FastMCP API (mcp.server.fastmcp),
+# which was removed in mcp 2.0. Unpinned installs silently broke CI.
+mcp = ["mcp>=1.9,<2.0"]
+dev = ["pytest", "pytest-asyncio"]
 
 [project.scripts]
 podcast-catalogue = "podcast_catalogue.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["podcast_catalogue*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

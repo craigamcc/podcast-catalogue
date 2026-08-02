@@ -3,7 +3,9 @@ import json
 import os
 from typing import Dict
 
-REGISTRY_FILE = os.path.join(os.path.dirname(__file__), "../data/entity_registry.json")
+from .config import data_path
+
+REGISTRY_FILE = data_path("entity_registry.json")
 
 # Default core corrections if file doesn't exist
 DEFAULT_CORRECTIONS = {

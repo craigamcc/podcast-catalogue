@@ -18,14 +18,12 @@ from .models import Podcast, Review, Vibe, TargetAudience, TranscriptSegment, Ch
 from .parser import parse_podcast_detail, parse_episode_page
 from .authority import get_authority_for_podcast
 from .entity_registry import apply_corrections
-from .transcriber import process_episode_transcription
 from .enricher import enrich_podcast_data, search_itunes_podcast
 from .ai_enricher import (
     analyze_podcast_description,
     analyze_episode_description,
     analyze_episode_transcript,
     generate_chapters,
-    identify_speakers,
     extract_highlights,
 )
 from .vector_store import get_db_client, get_collection, index_episode
@@ -379,6 +377,8 @@ class TranscribeStage(Stage):
     name = "transcribe"
 
     async def process(self, podcasts: List[Podcast], ctx: PipelineContext, **kwargs) -> List[Podcast]:
+        from .transcriber import process_episode_transcription
+
         on_podcast_processed = kwargs.get("on_podcast_processed")
         config = ctx.config
 
@@ -438,22 +438,6 @@ class TranscribeStage(Stage):
                     ep.audio_url, duration_limit=config.duration_limit
                 )
                 ep.transcript = transcript_text
-
-                # Speaker identification
-                if segments and any(s.get("speaker") for s in segments if isinstance(s, dict)):
-                    print(f"    🗣 Identifying speakers...")
-                    speaker_map = await identify_speakers(
-                        ctx.session, segments, ep.title,
-                        ep.description or podcast.description or ""
-                    )
-                    if speaker_map:
-                        print(f"       Map: {speaker_map}")
-                        for seg in segments:
-                            if isinstance(seg, dict) and seg.get("speaker"):
-                                s_label = seg["speaker"]
-                                if s_label in speaker_map:
-                                    seg["speaker"] = speaker_map[s_label]
-
                 ep.segments = [TranscriptSegment(**s) for s in segments]
                 print(f"    ✓ {len(transcript_text)} chars, {len(segments)} segments")
 
@@ -544,8 +528,8 @@ class ScoutEnrichStage(Stage):
                                 if t.get("contentRisk"):
                                     try:
                                         ep.content_risk = ContentRisk(**t["contentRisk"])
-                                    except Exception as re:
-                                        print(f"    ⚠️ Risk parsing error: {re}")
+                                    except Exception as err:
+                                        print(f"    ⚠️ Risk parsing error: {err}")
                             
                             if e_data.get("ai_provenance"):
                                 try:
@@ -750,7 +734,7 @@ class IndexStage(Stage):
             total_indexed = 0
             for ep in podcast.episodes:
                 ep_dict = ep.model_dump(by_alias=True)
-                n = await index_episode(ctx.session, collection, podcast.title, ep_dict)
+                n = await index_episode(ctx.session, db_client, podcast.title, ep_dict)
                 total_indexed += n
             if total_indexed > 0:
                 print(f"  🔍 {podcast.title[:30]}: indexed {total_indexed} chunks")

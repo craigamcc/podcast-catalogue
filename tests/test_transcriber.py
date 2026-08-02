@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import unittest
-from podcast_catalogue.transcriber import _get_speaker_model
+from podcast_catalogue.transcriber import _get_diarization_pipeline
 
 
 class TestLazyModelLoading(unittest.TestCase):
@@ -11,8 +11,8 @@ class TestLazyModelLoading(unittest.TestCase):
     def test_model_not_loaded_at_import(self):
         """Confirm that importing transcriber does NOT load the model."""
         from podcast_catalogue import transcriber
-        # The module-level _speaker_model should be None until first call
-        self.assertIsNone(transcriber._speaker_model)
+        # The module-level _diarization_pipeline should be None until first call
+        self.assertIsNone(transcriber._diarization_pipeline)
 
 
 class TestSegmentExtraction(unittest.TestCase):
