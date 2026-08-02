@@ -11,6 +11,7 @@ from mcp.server.fastmcp import FastMCP
 from dotenv import load_dotenv
 from .entity_registry import load_registry, save_registry
 from .models import Podcast
+from .catalogue_db import CatalogueDB
 
 # Load environment variables from .env if present
 load_dotenv()
@@ -44,15 +45,16 @@ VIBE_COMPLEXITY_DEEP_MIN = 0.6    # complexity >= this counts as "Deep"
 
 # --- In-Memory Data Store ---
 class DataStore:
-    def __init__(self, data_file: str = DATA_FILE):
+    def __init__(self, data_file: str = DATA_FILE, db_path: str = None):
         self.podcasts: Dict[str, Dict[str, Any]] = {}
         self.episodes_index: List[Dict[str, Any]] = [] # For semantic/text search
         self.episodes_by_id: Dict[str, Dict[str, Any]] = {} # Unique ID mapping
-        # Instance-level canonical path so persistence can be redirected (e.g.
-        # to an isolated temp file in tests). ingest_snipd_markdown's
-        # save+reload previously always hit the module-global DATA_FILE, which
-        # let the e2e ingest test overwrite the real catalogue.
+        # Instance-level paths so persistence can be redirected (e.g. to
+        # isolated temp files in tests). data_file is the JSONL bootstrap/export
+        # source; db is the SQLite store of record.
         self.data_file = data_file
+        self.db_path = db_path or data_path("catalogue.db")
+        self.db = CatalogueDB(self.db_path)
 
     @staticmethod
     def _provenance_or_default(ep: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -98,8 +100,102 @@ class DataStore:
                 if "vibe" not in podcast: podcast["vibe"] = {}
                 podcast["vibe"]["complexity"] = avg_complexity
 
+    def _index_show(self, title: str, normalized: Dict[str, Any]) -> None:
+        """Build the search-index episode entries for one normalized show."""
+        for ep in normalized.get("episodes", []):
+            ep_title = ep.get("title")
+            ep_id = hashlib.md5(f"{title}:{ep_title}".encode()).hexdigest()[:12]
+
+            # Hallucination Shield: Skip contaminated transcripts
+            transcript = ep.get("transcript") or ""
+            if not self._is_transcript_valid(transcript):
+                transcript = "[TRANSCRIPT UNAVAILABLE: DATA QUALITY ISSUE DETECTED]"
+
+            episode_data = {
+                "id": ep_id,
+                "podcast_title": title,
+                "title": ep_title,
+                "description": ep.get("description") or "",
+                "publishedAt": ep.get("publishedAt") or "",
+                "transcript": transcript,
+                # narrative hook, falling back to description
+                "hook": next((v for k in ("narrativeHook", "description") if (v := ep.get(k))), ""),
+                "entities": ep.get("entities", []),
+                "guests": ep.get("guests", []),
+                "segments": ep.get("segments", []),
+                "chapters": ep.get("chapters", []),
+                "highlights": ep.get("highlights", []),
+                "audio_url": ep.get("audioUrl") or "",
+                "vibe": ep.get("vibe") or {},
+                "engagement": ep.get("engagement") or {},
+                "apple_podcast_page": normalized.get("applePodcastPage"),
+                # Editorial Trust Layer
+                "genre": ep.get("genre"),
+                "content_risk": ep.get("contentRisk"),
+                "ai_provenance": ep.get("aiProvenance"),
+                "expires": ep.get("expires"),
+                "content_reference_time": ep.get("contentReferenceTime"),
+            }
+            self.episodes_index.append(episode_data)
+            self.episodes_by_id[ep_id] = episode_data
+
+    @staticmethod
+    def _normalize_record(data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize a raw record through the schema to canonical camelCase.
+
+        populate_by_name accepts legacy snake_case input; unknown fields are
+        dropped; mode="json" keeps it JSON-native (enums -> values). Raises on
+        validation failure so callers can quarantine.
+        """
+        normalized = Podcast.model_validate(data).model_dump(
+            by_alias=True, mode="json", exclude_none=True
+        )
+        # Honest provenance default (P3.4) on the canonical record.
+        for ep in normalized.get("episodes", []):
+            prov = DataStore._provenance_or_default(ep)
+            if prov is not None:
+                ep["aiProvenance"] = prov
+        return normalized
+
     def load_data(self, path: str = None):
-        path = path or self.data_file
+        """Load the catalogue into memory.
+
+        Default (no path): serve from the SQLite store of record; if the DB is
+        empty, bootstrap it from the JSONL fallback file once, then serve.
+        Explicit `path`: load that JSONL directly into memory (tests / ad-hoc
+        import) without touching the DB.
+        """
+        if path is not None:
+            self._load_from_jsonl(path)
+            return
+
+        if self.db.is_empty():
+            if os.path.exists(self.data_file):
+                self._load_from_jsonl(self.data_file)
+                # Persist the normalized catalogue to SQLite (one-time bootstrap).
+                self.db.replace_all(self.podcasts)
+                self.db.set_meta("bootstrapped_from", os.path.basename(self.data_file))
+                print(f"Bootstrapped SQLite catalogue ({self.db_path}) from {self.data_file}.", file=sys.stderr)
+            else:
+                print(f"Warning: SQLite catalogue empty and no bootstrap file at {self.data_file}", file=sys.stderr)
+        else:
+            self._load_from_db()
+
+    def _load_from_db(self):
+        """Rebuild the in-memory serve-cache from the SQLite store of record."""
+        self.podcasts = {}
+        self.episodes_index = []
+        self.episodes_by_id = {}
+        for normalized in self.db.iter_shows():
+            title = normalized.get("title")
+            if not title:
+                continue
+            self.podcasts[title.lower()] = normalized
+            self._index_show(title, normalized)
+        print(f"Loaded {len(self.podcasts)} shows and {len(self.episodes_index)} episodes from SQLite.", file=sys.stderr)
+
+    def _load_from_jsonl(self, path: str):
+        """Load a JSONL file into the in-memory cache (normalize + quarantine)."""
         if not os.path.exists(path):
             print(f"Warning: Data file not found at {path}", file=sys.stderr)
             return
@@ -123,63 +219,10 @@ class DataStore:
                     title = data.get("title")
                     if not title: continue
 
-                    # Normalize every record through the schema so the store
-                    # holds exactly one key convention (camelCase, via aliases).
-                    # populate_by_name lets legacy snake_case input validate too;
-                    # unknown fields are dropped; records that fail validation
-                    # fall through to quarantine below. mode="json" keeps the
-                    # dict JSON-native (enums -> values) so it re-serializes.
-                    normalized = Podcast.model_validate(data).model_dump(
-                        by_alias=True, mode="json", exclude_none=True
-                    )
-
-                    # Honest provenance default (P3.4) on the canonical record.
-                    for ep in normalized.get("episodes", []):
-                        prov = self._provenance_or_default(ep)
-                        if prov is not None:
-                            ep["aiProvenance"] = prov
-
+                    normalized = self._normalize_record(data)
                     self.podcasts[title.lower()] = normalized
-
-                    for ep in normalized.get("episodes", []):
-                        ep_title = ep.get("title")
-                        ep_id = hashlib.md5(f"{title}:{ep_title}".encode()).hexdigest()[:12]
-
-                        # Hallucination Shield: Skip contaminated transcripts
-                        transcript = ep.get("transcript") or ""
-                        if not self._is_transcript_valid(transcript):
-                            transcript = "[TRANSCRIPT UNAVAILABLE: DATA QUALITY ISSUE DETECTED]"
-
-                        episode_data = {
-                            "id": ep_id,
-                            "podcast_title": title,
-                            "title": ep_title,
-                            "description": ep.get("description") or "",
-                            "publishedAt": ep.get("publishedAt") or "",
-                            "transcript": transcript,
-                            # narrative hook, falling back to description
-                            "hook": next((v for k in ("narrativeHook", "description") if (v := ep.get(k))), ""),
-                            "entities": ep.get("entities", []),
-                            "guests": ep.get("guests", []),
-                            "segments": ep.get("segments", []),
-                            "chapters": ep.get("chapters", []),
-                            "highlights": ep.get("highlights", []),
-                            "audio_url": ep.get("audioUrl") or "",
-                            "vibe": ep.get("vibe") or {},
-                            "engagement": ep.get("engagement") or {},
-                            "apple_podcast_page": normalized.get("applePodcastPage"),
-                            # Editorial Trust Layer
-                            "genre": ep.get("genre"),
-                            "content_risk": ep.get("contentRisk"),
-                            "ai_provenance": ep.get("aiProvenance"),
-                            "expires": ep.get("expires"),
-                            "content_reference_time": ep.get("contentReferenceTime"),
-                        }
-                        self.episodes_index.append(episode_data)
-                        self.episodes_by_id[ep_id] = episode_data
                 except Exception:
-                    # Quarantine, never silently drop: a malformed line followed
-                    # by a full-file save_data() rewrite was permanent data loss.
+                    # Quarantine, never silently drop.
                     quarantined += 1
                     try:
                         with open(quarantine_path, "a", encoding="utf-8") as qf:
@@ -191,6 +234,13 @@ class DataStore:
         # Priority 1: Aggregate Show Vibes
         self._build_aggregate_vibes()
 
+        # Index AFTER the podcasts dict is finalized, so episodes_index reflects
+        # only the deduplicated set of stored shows (duplicate-title records
+        # overwrite earlier ones). Indexing inside the loop left episodes from
+        # overwritten shows orphaned in the index.
+        for norm in self.podcasts.values():
+            self._index_show(norm.get("title", ""), norm)
+
         print(f"Loaded {len(self.podcasts)} shows and {len(self.episodes_index)} episodes.", file=sys.stderr)
         if quarantined:
             print(
@@ -200,8 +250,20 @@ class DataStore:
             )
 
     def save_data(self, path: str = None):
-        """Persists the in-memory podcasts store back to a JSONL file (atomically)."""
-        path = path or self.data_file
+        """Persist the in-memory catalogue.
+
+        Default (no path): transactional write to the SQLite store of record —
+        atomic, no full-file rewrite, so a crash mid-write can't truncate the
+        catalogue. Explicit `path`: atomic JSONL export (tests / manual export).
+        """
+        if path is not None:
+            self._save_jsonl(path)
+            return
+        self.db.replace_all(self.podcasts)
+        print(f"Persisted {len(self.podcasts)} shows to SQLite ({self.db_path}).", file=sys.stderr)
+
+    def _save_jsonl(self, path: str):
+        """Atomic JSONL export (tmp file + os.replace)."""
         print(f"Saving GoldMine catalogue to {path}...", file=sys.stderr)
         tmp_path = path + ".tmp"
         try:
@@ -275,9 +337,16 @@ class DataStore:
         if transcript_match:
             episode["transcript"] = transcript_match.group(1).strip()
 
-        # 5. Sync and Rebuild indices
-        self.save_data()
-        self.load_data()
+        # 5. Normalize the mutated show through the schema (the DB store-of-record
+        # holds canonical camelCase; the old JSONL save+reload did this
+        # implicitly via model_validate). Then persist transactionally and
+        # rebuild the in-memory index from the store.
+        try:
+            self.podcasts[p_key] = self._normalize_record(self.podcasts[p_key])
+        except Exception as e:
+            print(f"Warning: ingested show failed normalization, storing as-is: {e}", file=sys.stderr)
+        self.save_data()   # -> SQLite (transactional)
+        self.load_data()   # -> rebuild in-memory cache from SQLite
 
     def _parse_snipd_metadata(self, content: str) -> Dict[str, Any]:
         """Extracts YAML-like frontmatter from Snipd MD."""
@@ -383,7 +452,11 @@ class DataStore:
 
 # Global Store
 store = DataStore()
-store.load_data()
+# Auto-load at import for real server use. Skip under pytest: the test suite
+# builds isolated stores per-test, and bootstrapping the full catalogue into a
+# real SQLite DB at collection time is slow and pointless.
+if "pytest" not in sys.modules:
+    store.load_data()
 
 # --- Resources ---
 

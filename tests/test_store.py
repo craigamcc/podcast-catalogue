@@ -47,7 +47,7 @@ class TestQuarantineNotDrop:
         data_file = tmp_path / "universe.jsonl"
         write_jsonl(data_file, [GOOD_SHOW], extra_raw_lines=['{"broken json… no closing brace'])
 
-        store = DataStore()
+        store = DataStore(db_path=str(tmp_path / "cat.db"))
         store.load_data(str(data_file))
 
         assert len(store.podcasts) == 1  # good record loaded
@@ -61,7 +61,7 @@ class TestQuarantineNotDrop:
         bad_line = '{"title": "Recoverable Show", "episodes": [BROKEN'
         write_jsonl(data_file, [GOOD_SHOW], extra_raw_lines=[bad_line])
 
-        store = DataStore()
+        store = DataStore(db_path=str(tmp_path / "cat.db"))
         store.load_data(str(data_file))
         store.save_data(str(data_file))  # rewrites the file from memory
 
@@ -75,7 +75,7 @@ class TestAtomicSave:
         data_file = tmp_path / "universe.jsonl"
         write_jsonl(data_file, [GOOD_SHOW])
 
-        store = DataStore()
+        store = DataStore(db_path=str(tmp_path / "cat.db"))
         store.load_data(str(data_file))
         store.save_data(str(data_file))
 
@@ -88,7 +88,7 @@ class TestAtomicSave:
         write_jsonl(data_file, [GOOD_SHOW])
         original_content = data_file.read_text()
 
-        store = DataStore()
+        store = DataStore(db_path=str(tmp_path / "cat.db"))
         store.load_data(str(data_file))
 
         def boom(*a, **k):
@@ -139,21 +139,24 @@ class TestFabricatedLinkMigration:
 
 
 class TestPersistenceIsolation:
-    """Regression: ingest must never write outside the store's own data_file.
+    """Regression: ingest must never write outside the store's own backend.
 
     An earlier e2e Snipd-ingest test overwrote the real data/universe.jsonl
     because ingest_snipd_markdown's save+reload always targeted the module
-    global DATA_FILE. DataStore now carries an instance-level data_file.
+    global DATA_FILE. DataStore now persists to an instance-level SQLite DB.
     """
 
-    def test_ingest_writes_only_to_instance_data_file(self, tmp_path):
+    def test_ingest_writes_only_to_instance_db(self, tmp_path):
         from podcast_catalogue.server import DataStore
 
+        # An unrelated real catalogue file that must stay untouched.
         real_file = tmp_path / "real_catalogue.jsonl"
         write_jsonl(real_file, [GOOD_SHOW])
 
-        isolated = tmp_path / "isolated.jsonl"
-        store = DataStore(data_file=str(isolated))
+        store = DataStore(
+            data_file=str(tmp_path / "bootstrap.jsonl"),
+            db_path=str(tmp_path / "instance.db"),
+        )
 
         content = (
             "---\nshow_title: Ingested Show\nepisode_title: Ingested Ep\n---\n"
@@ -161,10 +164,11 @@ class TestPersistenceIsolation:
         )
         store.ingest_snipd_markdown(content)
 
-        # The unrelated 'real' file must be untouched; the isolated one written.
+        # The unrelated real file is untouched; the ingested show is in the
+        # instance's SQLite DB and in memory.
         assert json.loads(real_file.read_text().strip())["title"] == "Good Show"
-        assert isolated.exists()
-        assert "Ingested Show" in isolated.read_text()
+        assert store.db.get_show("ingested show") is not None
+        assert "ingested show" in store.podcasts
 
 
 RICH_SHOW = {
@@ -197,7 +201,7 @@ class TestStoreNormalization:
                                "narrative_hook": "h"}]}
         write_jsonl(data_file, [snake])
 
-        store = DataStore(data_file=str(data_file))
+        store = DataStore(data_file=str(data_file), db_path=str(tmp_path / "cat.db"))
         store.load_data()
 
         pod = store.podcasts["s"]
@@ -213,7 +217,7 @@ class TestStoreNormalization:
         data_file = tmp_path / "u.jsonl"
         write_jsonl(data_file, [RICH_SHOW])
 
-        store = DataStore(data_file=str(data_file))
+        store = DataStore(data_file=str(data_file), db_path=str(tmp_path / "cat.db"))
         store.load_data()
 
         ep = store.podcasts["rich show"]["episodes"][0]
@@ -229,7 +233,7 @@ class TestStoreNormalization:
         data_file = tmp_path / "u.jsonl"
         write_jsonl(data_file, [RICH_SHOW, GOOD_SHOW])
 
-        store = DataStore(data_file=str(data_file))
+        store = DataStore(data_file=str(data_file), db_path=str(tmp_path / "cat.db"))
         store.load_data()
         first = dict(store.podcasts)
         first_index_len = len(store.episodes_index)
@@ -245,7 +249,7 @@ class TestStoreNormalization:
             {"title": "E", "highlights": [{"startTime": "not-a-number"}]}]}
         write_jsonl(data_file, [GOOD_SHOW, bad])
 
-        store = DataStore(data_file=str(data_file))
+        store = DataStore(data_file=str(data_file), db_path=str(tmp_path / "cat.db"))
         store.load_data()
 
         assert "good show" in store.podcasts
@@ -255,12 +259,76 @@ class TestStoreNormalization:
         assert "Bad" in quarantine.read_text()
 
 
+class TestSQLiteStoreOfRecord:
+    def test_bootstrap_then_serve_from_db_without_jsonl(self, tmp_path):
+        """After bootstrap, the SQLite DB is the store of record — the JSONL is
+        no longer needed to serve."""
+        from podcast_catalogue.server import DataStore
+
+        jsonl = tmp_path / "boot.jsonl"
+        write_jsonl(jsonl, [RICH_SHOW, GOOD_SHOW])
+        db_path = str(tmp_path / "cat.db")
+
+        s1 = DataStore(data_file=str(jsonl), db_path=db_path)
+        s1.load_data()  # bootstraps DB from JSONL
+        assert s1.db.count() == 2
+        assert s1.db.get_meta("bootstrapped_from") == "boot.jsonl"
+
+        # Delete the JSONL; a fresh store on the same DB still serves.
+        jsonl.unlink()
+        s2 = DataStore(data_file=str(jsonl), db_path=db_path)
+        s2.load_data()
+        assert "rich show" in s2.podcasts
+        assert "good show" in s2.podcasts
+        assert len(s2.episodes_index) == len(s1.episodes_index)
+
+    def test_default_save_writes_sqlite_not_jsonl(self, tmp_path):
+        from podcast_catalogue.server import DataStore
+
+        jsonl = tmp_path / "boot.jsonl"
+        write_jsonl(jsonl, [GOOD_SHOW])
+        db_path = str(tmp_path / "cat.db")
+
+        store = DataStore(data_file=str(jsonl), db_path=db_path)
+        store.load_data()
+        jsonl_mtime = jsonl.stat().st_mtime_ns
+
+        store.podcasts["good show"]["description"] = "edited"
+        store.save_data()  # default -> SQLite, not the JSONL
+
+        assert jsonl.stat().st_mtime_ns == jsonl_mtime  # JSONL untouched
+        assert store.db.get_show("good show")["description"] == "edited"
+
+    def test_jsonl_and_db_load_paths_agree(self, tmp_path):
+        """The deduplicated episode set is identical whether loaded from JSONL
+        or from SQLite (regression for the orphaned-episode bug)."""
+        from podcast_catalogue.server import DataStore
+
+        jsonl = tmp_path / "boot.jsonl"
+        # Two records with the same title -> dedup to one show in the store.
+        dup_a = {"title": "Dup", "episodes": [{"title": "A"}]}
+        dup_b = {"title": "Dup", "episodes": [{"title": "B"}]}
+        write_jsonl(jsonl, [RICH_SHOW, dup_a, dup_b])
+
+        store = DataStore(data_file=str(jsonl), db_path=str(tmp_path / "cat.db"))
+        store.load_data()               # JSONL path (post-dedup index)
+        jsonl_eps = len(store.episodes_index)
+        jsonl_shows = len(store.podcasts)
+        store.load_data()               # SQLite path
+        assert len(store.episodes_index) == jsonl_eps
+        assert len(store.podcasts) == jsonl_shows
+        # No episode in the index references a show that isn't in the store.
+        stored_titles = {p["title"] for p in store.podcasts.values()}
+        for ep in store.episodes_index:
+            assert ep["podcast_title"] in stored_titles
+
+
 class TestProvenanceDefaults:
     def test_enriched_episode_without_provenance_gets_honest_default(self, tmp_path):
         data_file = tmp_path / "universe.jsonl"
         write_jsonl(data_file, [GOOD_SHOW])  # has vibe, no aiProvenance
 
-        store = DataStore()
+        store = DataStore(db_path=str(tmp_path / "cat.db"))
         store.load_data(str(data_file))
 
         ep = store.episodes_index[0]
@@ -280,7 +348,7 @@ class TestProvenanceDefaults:
         data_file = tmp_path / "universe.jsonl"
         write_jsonl(data_file, [show])
 
-        store = DataStore()
+        store = DataStore(db_path=str(tmp_path / "cat.db"))
         store.load_data(str(data_file))
         assert store.episodes_index[0]["ai_provenance"]["modelName"] == "gemini-2.5"
 
@@ -289,6 +357,6 @@ class TestProvenanceDefaults:
         data_file = tmp_path / "universe.jsonl"
         write_jsonl(data_file, [show])
 
-        store = DataStore()
+        store = DataStore(db_path=str(tmp_path / "cat.db"))
         store.load_data(str(data_file))
         assert store.episodes_index[0]["ai_provenance"] is None

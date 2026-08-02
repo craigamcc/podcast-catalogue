@@ -31,3 +31,8 @@ sitemap-*.xml.gz
 # OS
 .DS_Store
 .env
+
+# SQLite store of record
+*.db
+*.db-wal
+*.db-shm
