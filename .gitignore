@@ -36,3 +36,6 @@ sitemap-*.xml.gz
 *.db
 *.db-wal
 *.db-shm
+
+# Bulk seed data — provisioned out-of-band, bootstrapped into SQLite (not tracked)
+data/podcasts_450_full_intelligence.jsonl
